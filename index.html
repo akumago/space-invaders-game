@@ -268,9 +268,9 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_BASE_SPEED = 20; // 1秒あたりのインベーダーの基本移動速度
+        const INVADER_BASE_SPEED = 15; // ★修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
-        const INVADER_PROJECTILE_SPEED = 5;
+        const INVADER_PROJECTILE_SPEED = 4; // ★修正: 5から4に減少（インベーダーの弾の速度）
         const INVADER_ROWS = 5;
         const INVADER_COLS = 8;
         const INVADER_WIDTH = 40; // invader1.pngのサイズを大きく表示するため40に調整
@@ -328,7 +328,6 @@
         let backgroundVideo; // 背景動画要素
 
         // Invader movement flags
-        let shouldInvadersMoveDown = false; // 現在は使われていないが、以前のロジックの名残
         let lastInvaderMoveDownTime = 0;
         const INVADER_MOVE_DOWN_INTERVAL = 500; // インベーダーが下に移動する間隔（ミリ秒）
 
@@ -586,7 +585,8 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10),
+                        // ★修正: レベルアップによる速度上昇を緩やかに
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 5),
                         hp: 1
                     });
                 }
@@ -626,15 +626,11 @@
                 player.blinkTimer = 0;
             }
 
-            boss = null; // ボスをリセット
+            boss = null; // ★修正: ボスは最初に生成しない（インベーダー全滅後に生成）
             projectiles = [];
             invaderProjectiles = [];
 
-            createInvaders();
-            // すべてのレベルでボスが出現するように条件を設定
-            if (currentLevel >= 1) { // 現在のレベルが1以上であればボスを生成
-                createBoss();
-            }
+            createInvaders(); // まずインベーダーのみを生成
 
             updateScoreDisplay();
             updateLivesDisplay();
@@ -654,7 +650,6 @@
 
             animationFrameId = requestAnimationFrame(update);
 
-            shouldInvadersMoveDown = false;
             lastInvaderMoveDownTime = performance.now();
         }
 
@@ -886,7 +881,7 @@
                     updateScoreDisplay();
 
                     if (boss.hp <= 0) {
-                        boss = null;
+                        boss = null; // ボスHPが0になったらボスを消去
                         score += 500;
                         updateScoreDisplay();
                     }
@@ -926,9 +921,19 @@
                 }
             }
 
-            // Check if all invaders (and boss if exists) are destroyed
-            if (invaders.length === 0 && !boss) {
-                endGame(true);
+            // ★修正: レベルクリア条件の変更
+            // 1. 全てのインベーダーが破壊された場合
+            if (invaders.length === 0) {
+                // 2. ボスがまだ出現していない場合、ボスを生成
+                if (!boss) {
+                    createBoss();
+                    // 必要であれば、ここでボス出現の演出や一時停止などを入れることができます
+                }
+            }
+
+            // 3. 全てのインベーダーが破壊され、かつボスも破壊された場合、レベルクリア
+            if (invaders.length === 0 && boss === null) {
+                endGame(true); // レベルクリア
                 return;
             }
 
@@ -938,12 +943,11 @@
                 return;
             }
 
-            draw(); // ★ここが重要です。draw関数が正しく呼び出されていることを確認。
+            draw();
             animationFrameId = requestAnimationFrame(update);
         }
 
         // --- Drawing ---
-        // draw関数がここにあることを確認してください。
         function draw() {
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // Clear canvas
 
