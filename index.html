@@ -372,8 +372,20 @@
                     }
                 });
 
-                // スタートボタンのクリックイベントリスナー
-                startButton.addEventListener('click', () => {
+                // ★修正：スタートボタンのイベントリスナーをtouchstartに変更
+                startButton.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); // デフォルトの挙動（クリックイベントの発生など）を抑制
+                    handleStartButtonTap();
+                }, { passive: false }); // preventDefaultを使うのでpassive: falseを設定
+
+                // マウスのクリックも引き続きサポート
+                startButton.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // デフォルトの挙動を抑制
+                    handleStartButtonTap();
+                });
+
+                // ボタンのタップ/クリック処理を共通化
+                function handleStartButtonTap() {
                     if (currentGameState === GAME_STATE.START_SCREEN) {
                         if (!isInitialStartTapDone) {
                             // 1回目のタップ：動画再生とボタンテキスト変更
@@ -390,7 +402,7 @@
                             startGame(true); // 新しいゲームを開始
                         }
                     }
-                });
+                }
             }).catch(error => {
                 console.error("Error loading assets:", error);
                 loadingMessage.innerText = `Error loading assets: ${error.message || error}. Please check console for details.`;
