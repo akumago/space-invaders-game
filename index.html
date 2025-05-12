@@ -313,6 +313,7 @@
         let loadedImages = {};
         let loadedAudio = {};
         let boss = null;
+        let bossCreatedForThisLevel = false; // ★追加: ボスがこのレベルで生成されたかどうかのフラグ
 
         // Player shooting cooldown
         let playerShootCooldown = 0;
@@ -635,6 +636,7 @@
             }
 
             boss = null; // ボスは最初に生成しない（インベーダー全滅後に生成）
+            bossCreatedForThisLevel = false; // ★修正: 新しいゲームまたはレベル開始時にリセット
             projectiles = [];
             invaderProjectiles = [];
 
@@ -751,7 +753,7 @@
             // Update player position
             if (player.movingLeft && player.x > 0) {
                 player.x -= PLAYER_SPEED;
-            } else if (player.key === 'ArrowRight' || e.key === 'd'player.movingRight && player.x < GAME_WIDTH - player.width) {
+            } else if (player.movingRight && player.x < GAME_WIDTH - player.width) {
                 player.x += PLAYER_SPEED;
             } else if (playerTargetX !== null) {
                 const targetPlayerCenter = playerTargetX;
@@ -877,6 +879,10 @@
             // Collision Detection: Player Projectiles vs Invaders
             for (let pIndex = projectiles.length - 1; pIndex >= 0; pIndex--) {
                 const p = projectiles[pIndex];
+                
+                let hitOccurred = false; // 弾が何かに当たったかどうかのフラグ
+
+                // Invaders collision
                 for (let invaderIndex = invaders.length - 1; invaderIndex >= 0; invaderIndex--) {
                     const invader = invaders[invaderIndex];
                     if (
@@ -887,17 +893,18 @@
                     ) {
                         invader.hp--;
                         projectiles.splice(pIndex, 1);
-
+                        hitOccurred = true; // 弾が当たった
                         if (invader.hp <= 0) {
                             invaders.splice(invaderIndex, 1);
                             score += 10;
                             updateScoreDisplay();
                         }
-                        break;
+                        break; // 弾は一つしか当たらないので、ループを抜ける
                     }
                 }
-                // Collision Detection: Player Projectiles vs Boss
-                if (boss && projectiles.includes(p) &&
+                
+                // Boss collision (弾がまだ存在している場合のみチェック)
+                if (!hitOccurred && boss && 
                     p.x < boss.x + boss.width &&
                     p.x + p.width > boss.x &&
                     p.y < boss.y + boss.height &&
@@ -905,6 +912,7 @@
                 ) {
                     boss.hp--;
                     projectiles.splice(pIndex, 1);
+                    hitOccurred = true; // 弾が当たった
                     score += 50;
                     updateScoreDisplay();
 
@@ -912,6 +920,10 @@
                         boss = null; // ボスHPが0になったらボスを消去
                         score += 500;
                         updateScoreDisplay();
+                        // ボスを倒した際にレベルクリアをトリガーする。
+                        // このupdate()ループ内でさらに処理を進めると
+                        // ボスが倒された直後に新しいボスが作られる可能性があるので、
+                        // ここではゲームオーバー状態への遷移をトリガーするのみとする。
                     }
                 }
             }
@@ -953,16 +965,17 @@
             // 1. 全てのインベーダーが破壊された場合
             if (invaders.length === 0) {
                 // 2. ボスがまだ出現していない場合、ボスを生成
-                if (!boss) {
+                // bossCreatedForThisLevelフラグで、現在のレベルでボスが一度だけ生成されることを保証
+                if (!boss && !bossCreatedForThisLevel) { 
                     createBoss();
-                    // 必要であれば、ここでボス出現の演出や一時停止などを入れることができます
+                    bossCreatedForThisLevel = true; // ボスが生成されたことをマーク
                 }
             }
 
-            // 3. 全てのインベーダーが破壊され、かつボスも破壊された場合、レベルクリア
-            if (invaders.length === 0 && boss === null) {
+            // 3. ボスが生成されており (bossCreatedForThisLevelがtrue)、かつボスが破壊された場合 (bossがnull)、レベルクリア
+            if (bossCreatedForThisLevel && boss === null) { 
                 endGame(true); // レベルクリア
-                return;
+                return; // ★重要: レベルクリア処理の後はすぐにupdateを終了
             }
 
             // Check if invaders reached bottom
@@ -971,12 +984,12 @@
                 return;
             }
 
-            draw();
+            draw(); // ★この関数が適切に呼び出されるように確認
             animationFrameId = requestAnimationFrame(update);
         }
 
         // --- Drawing ---
-        function draw() {
+        function draw() { 
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // Clear canvas
 
             // Draw player
