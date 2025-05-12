@@ -10,7 +10,7 @@
             margin: 0;
             padding: 0;
             overflow: hidden; /* スクロール禁止 */
-            background-color: #000; /* ★デフォルトの背景色を黒に設定 */
+            background-color: #000; /* デフォルトの背景色を黒に設定（ゲーム画面外） */
             font-family: 'Arial', sans-serif;
             color: #fff;
             -webkit-user-select: none; /* テキスト選択無効化 (iOS) */
@@ -36,7 +36,7 @@
             width: 420px; /* GAME_WIDTHと同期 */
             height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
             overflow: hidden; /* はみ出たコンテンツを隠す */
-            background-color: black; /* ゲーム中の背景色（動画が読み込まれない場合のフォールバック） */
+            /* background-color: black; */ /* ゲーム中の背景色（動画が読み込まれない場合のフォールバック。キャンバスの背景色で上書きされるので不要） */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
             z-index: 1; /* 他のUIより手前 */
@@ -52,8 +52,7 @@
             height: 100%;
             display: block; /* 初期状態はJSで制御 */
             z-index: 0; /* 動画より手前 */
-            /* もしゲームプレイ中に動画なしでライトグレーの背景にしたい場合、以下のコメントアウトを解除 */
-            /* background-color: lightgray; */
+            background-color: lightgray; /* ★修正: ゲームプレイ中の背景色をライトグレーに設定 */
         }
 
         /* 背景動画 - gameContainerのサイズに合わせる */
@@ -270,7 +269,7 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_BASE_SPEED = 60; // 1秒あたりのピクセル移動量を定義
+        const INVADER_BASE_SPEED = 30; // ★修正: 1秒あたりのインベーダーの基本移動速度を遅くする
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
         const INVADER_PROJECTILE_SPEED = 5;
         const INVADER_ROWS = 5;
@@ -279,8 +278,8 @@
         const INVADER_HEIGHT = 20; // invader1.pngのサイズに合わせて調整してください。
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
         // 画像サイズ(30x20)に対して、間隔を広げて重なりを防ぎます。
-        const INVADER_SPACING_X = 35; 
-        const INVADER_SPACING_Y = 35; 
+        const INVADER_SPACING_X = 45; // ★修正: インベーダー間の横方向の間隔をさらに広めに調整
+        const INVADER_SPACING_Y = 35; // ★修正: インベーダー間の縦方向の間隔を調整
         const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
         const MAX_LEVELS = 5; // 最大レベル数
         const PLAYER_WIDTH = 30; // invader3.pngのサイズに合わせて調整してください。
@@ -331,8 +330,8 @@
         let backgroundVideo; // 背景動画要素
 
         // Invader movement flags
-        let shouldInvadersMoveDown = false; 
-        let lastInvaderMoveDownTime = 0; 
+        let shouldInvadersMoveDown = false;
+        let lastInvaderMoveDownTime = 0;
         const INVADER_MOVE_DOWN_INTERVAL = 500; // インベーダーが下に移動する間隔（ミリ秒）
 
         let isInitialStartTapDone = false; // 最初のタップ（動画再生）が完了したかどうかのフラグ
@@ -463,7 +462,7 @@
 
                 // インベーダーの画像
                 loadImage('invader', 'image/invader1.png'),
-                
+
                 // ボスの画像
                 loadImage('boss', 'image/invader2.png'),
             ];
@@ -522,7 +521,7 @@
             startButtonContainer.style.display = 'flex';
             messageBox.style.display = 'none';
             canvas.style.display = 'none';
-            
+
             if (backgroundVideo) {
                 // スタート画面では動画を表示
                 backgroundVideo.style.display = 'block';
@@ -535,12 +534,12 @@
 
             currentGameState = GAME_STATE.START_SCREEN;
             startButton.innerText = "TAP TO START";
-            isInitialStartTapDone = false; 
+            isInitialStartTapDone = false;
         }
 
         function hideStartButton() {
             startButtonContainer.style.display = 'none';
-            
+
             // ★修正: ゲーム開始時に背景動画を非表示にする
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 動画を非表示にする
@@ -548,10 +547,6 @@
                 backgroundVideo.currentTime = 0; // 動画の再生位置をリセット
             }
             canvas.style.display = 'block'; // キャンバスを表示
-
-            // ここでキャンバスの背景色を設定したい場合は、CSSかJSで設定
-            // 例: ctx.fillStyle = 'lightgray'; ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT); 
-            // またはCSSの #gameCanvas に background-color: lightgray; を設定
         }
 
         function showMessage(msg) {
@@ -580,20 +575,20 @@
         function createInvaders() {
             invaders = [];
             // インベーダー全体の幅を計算
-            // ★修正: INVADER_WIDTH + INVADER_SPACING_X を使用して計算
-            const totalInvaderWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING_X);
+            // INVADER_COLS 個のインベーダーがあり、間に INVADER_COLS-1 個のスペースがある
+            const totalInvaderBlockWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING_X);
             // 開始X座標を計算（中央揃え）
-            const startX = (GAME_WIDTH - totalInvaderWidth) / 2;
+            const startX = (GAME_WIDTH - totalInvaderBlockWidth) / 2;
             const startY = 80; // インベーダーの初期Y座標は高く保つ
 
             for (let row = 0; row < INVADER_ROWS; row++) {
                 for (let col = 0; col < INVADER_COLS; col++) {
                     invaders.push({
-                        x: startX + col * (INVADER_WIDTH + INVADER_SPACING_X), 
-                        y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y), 
+                        x: startX + col * (INVADER_WIDTH + INVADER_SPACING_X),
+                        y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10), 
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10),
                         hp: 1
                     });
                 }
@@ -606,7 +601,7 @@
                 y: 30,
                 width: 100,
                 height: 80,
-                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5, 
+                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5,
                 hp: BOSS_HP_PER_LEVEL * currentLevel,
                 shootTimer: 0,
                 shootInterval: Math.max(30, 60 - (currentLevel - 1) * 10)
@@ -631,7 +626,7 @@
                 player.invincibleTimer = 0;
                 player.blinkTimer = 0;
             }
-            
+
             boss = null;
             projectiles = [];
             invaderProjectiles = [];
@@ -659,8 +654,8 @@
 
             animationFrameId = requestAnimationFrame(update);
 
-            shouldInvadersMoveDown = false; 
-            lastInvaderMoveDownTime = performance.now(); 
+            shouldInvadersMoveDown = false;
+            lastInvaderMoveDownTime = performance.now();
         }
 
         function endGame(win) {
@@ -683,7 +678,7 @@
                 backgroundVideo.style.zIndex = -1; // 動画をゲームオーバーメッセージボックスより奥に
             }
             canvas.style.display = 'none';
-            
+
             let message = '';
             const playAgainButton = messageBox.querySelector('button');
 
@@ -746,11 +741,11 @@
             }
 
             // Player shooting cooldown
-            // ★修正: クールダウンをdeltaTimeで計算
+            // クールダウンをdeltaTimeで計算
             if (playerShootCooldown > 0) {
                 playerShootCooldown -= deltaTime * 60; // 1秒間に60フレームとして計算
             }
-            // ★修正: ポインタが押されている間、クールダウンが完了していれば発射
+            // ポインタが押されている間、クールダウンが完了していれば発射
             if (isPointerDown && playerShootCooldown <= 0) {
                 shootProjectile();
             }
@@ -779,7 +774,7 @@
             if (hitEdgeThisFrame) {
                 // 左右反転は常に実行
                 invaders.forEach(invader => {
-                    invader.dx *= -1; 
+                    invader.dx *= -1;
                     // 画面外に出るのを防ぐための微調整
                     if (invader.x + invader.width > GAME_WIDTH) {
                         invader.x = GAME_WIDTH - invader.width;
@@ -845,7 +840,7 @@
                     ) {
                         invader.hp--;
                         projectiles.splice(pIndex, 1);
-                        
+
                         if (invader.hp <= 0) {
                             invaders.splice(invaderIndex, 1);
                             score += 10;
@@ -1014,9 +1009,7 @@
                 const touchXInCanvas = (touchX - rect.left) * scaleX;
                 playerTargetX = touchXInCanvas;
                 isPointerDown = true;
-                // ★修正: ここでは発射しない。updateループ内でクールダウンを見て発射する。
-                // shootProjectile(); 
-            } 
+            }
         }
 
         function handleTouchMove(e) {
@@ -1045,9 +1038,7 @@
                 const mouseXInCanvas = (mouseX - rect.left) * scaleX;
                 playerTargetX = mouseXInCanvas;
                 isPointerDown = true;
-                // ★修正: ここでは発射しない。updateループ内でクールダウンを見て発射する。
-                // shootProjectile();
-            } 
+            }
         }
 
         function handleMouseMove(e) {
