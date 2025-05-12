@@ -240,7 +240,8 @@
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <video autoplay loop muted playsinline id="background-video">
-            <source src="video/background_loop.mp4" type="video/mp4"> Your browser does not support the video tag.
+            <source src="video/background_loop.mp4" type="video/mp4">
+            Your browser does not support the video tag.
         </video>
         <div id="score">Score: 0</div>
         <div id="lives">Lives: 3</div>
@@ -446,14 +447,14 @@
         function loadAssets() {
             showLoadingMessage();
             const imagePromises = [
-                // プレイヤーの画像: あなたの 'camera_biz.png' を使用します
-                loadImage('player', 'image/camera_biz.png'),  // ★修正箇所★
+                // プレイヤーの画像: あなたの 'invader3.png' を使用します
+                loadImage('player', 'image/invader3.png'),  // ★修正箇所★
 
                 // インベーダーの画像: あなたの 'invader1.png' を使用します
-                loadImage('invader', 'image/invader1.png'),  // ★修正箇所★
+                loadImage('invader', 'image/invader1.png'), 
                 
                 // ボスの画像: あなたの 'invader2.png' を使用します
-                loadImage('boss', 'image/invader2.png'), // ★修正箇所★
+                loadImage('boss', 'image/invader2.png'),
 
                 // ↓↓ 以下は現在ファイルが不足しているか、不要とされた画像です ↓↓
                 // これらのファイルを追加して、ゲームで利用したい場合は、
