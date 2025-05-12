@@ -281,6 +281,8 @@
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
         
+        const BOSS_WIDTH = 150; // ★変更: ボスの幅を大きく
+        const BOSS_HEIGHT = 120; // ★変更: ボスの高さを大きく
         const BOSS_HP_PER_LEVEL = 10; // （ボスのHP）
         const MAX_LEVELS = 10; // 最大レベル数を10に設定
         const PLAYER_WIDTH = 40; // 修正: 30から40に増加（自機の表示サイズ）
@@ -470,6 +472,9 @@
 
                 // ボスの画像
                 loadImage('boss', 'image/invader2.png'),
+
+                // ★追加: ボス爆発の画像
+                loadImage('boss_explosion', 'image/explosion.png'),
             ];
             const audioPromises = [
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
@@ -603,15 +608,20 @@
 
         function createBoss() {
             boss = {
-                x: GAME_WIDTH / 2 - 50,
+                x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // ★変更: 中央に配置
                 y: 30,
-                width: 100,
-                height: 80,
+                width: BOSS_WIDTH, // 変更後の幅を使用
+                height: BOSS_HEIGHT, // 変更後の高さを使用
                 dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5,
                 hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
                 shootTimer: 0,
                 // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
-                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15)
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15),
+                isExploding: false, // ★追加: 爆発中フラグ
+                explosionTimer: 0, // ★追加: 爆発タイマー
+                explosionDuration: 50, // ★追加: 爆発時間 (フレーム単位, 1秒=60フレームとして)
+                originalImage: 'boss', // ★追加: 元の画像キー
+                explosionImage: 'boss_explosion' // ★追加: 爆発用画像キー (loadImageに追加済み)
             };
         }
 
@@ -839,7 +849,7 @@
             }
 
             // Update boss movement (if exists)
-            if (boss) {
+            if (boss && !boss.isExploding) { // ★修正: 爆発中は移動しない
                 boss.x += boss.dx * deltaTime; // deltaTimeを掛けて速度を調整
                 if (boss.x + boss.width > GAME_WIDTH) {
                     boss.x = GAME_WIDTH - boss.width;
@@ -904,7 +914,7 @@
                 }
                 
                 // Boss collision (弾がまだ存在している場合のみチェック)
-                if (!hitOccurred && boss && 
+                if (!hitOccurred && boss && !boss.isExploding && // ★爆発中は判定しない
                     p.x < boss.x + boss.width &&
                     p.x + p.width > boss.x &&
                     p.y < boss.y + boss.height &&
@@ -916,17 +926,31 @@
                     score += 50;
                     updateScoreDisplay();
 
-                    if (boss.hp <= 0) {
-                        boss = null; // ボスHPが0になったらボスを消去
+                    if (boss.hp <= 0 && !boss.isExploding) { // ★爆発中でないことを確認
+                        boss.isExploding = true;
+                        boss.explosionTimer = boss.explosionDuration; // 爆発タイマー設定
                         score += 500;
                         updateScoreDisplay();
-                        // ボスを倒した際にレベルクリアをトリガーする。
-                        // このupdate()ループ内でさらに処理を進めると
-                        // ボスが倒された直後に新しいボスが作られる可能性があるので、
-                        // ここではゲームオーバー状態への遷移をトリガーするのみとする。
                     }
                 }
             }
+
+            // Boss explosion update
+            if (boss && boss.isExploding) {
+                boss.explosionTimer -= deltaTime * 60; // フレーム単位でタイマーを減らす
+                if (boss.explosionTimer <= 0) {
+                    boss = null; // ボスを消去
+                    // ★少し遅れてレベルクリア処理をトリガー
+                    // この遅延により、爆発演出が見える時間を確保
+                    setTimeout(() => {
+                        // ボスがnullになったこと、インベーダーが0であること、ボスがそのレベルで生成されていたことを確認してレベルクリア
+                        if (invaders.length === 0 && boss === null && bossCreatedForThisLevel) {
+                            endGame(true);
+                        }
+                    }, 500); // 0.5秒（500ミリ秒）の遅延
+                }
+            }
+
 
             // Collision Detection: Invader Projectiles vs Player
             for (let i = invaderProjectiles.length - 1; i >= 0; i--) {
@@ -973,10 +997,14 @@
             }
 
             // 3. ボスが生成されており (bossCreatedForThisLevelがtrue)、かつボスが破壊された場合 (bossがnull)、レベルクリア
-            if (bossCreatedForThisLevel && boss === null) { 
-                endGame(true); // レベルクリア
-                return; // ★重要: レベルクリア処理の後はすぐにupdateを終了
-            }
+            // ★注意: ボスがnullになるのは爆発演出の後なので、この条件はsetTimeout内で別途チェックされる
+            // ここでは通常の敵が画面下部に到達した場合のゲームオーバーのみ
+            // もしsetTimeoutを使わない場合は、ここのif文の条件を見直す必要がありますが、今回はこれでOK
+            // if (bossCreatedForThisLevel && boss === null) { 
+            //     endGame(true); // レベルクリア
+            //     return; // ★重要: レベルクリア処理の後はすぐにupdateを終了
+            // }
+
 
             // Check if invaders reached bottom
             if (invaders.some(invader => invader.y + invader.height > player.y)) {
@@ -1006,8 +1034,12 @@
             });
 
             // Draw boss
-            if (boss && loadedImages.boss) {
-                ctx.drawImage(loadedImages.boss, boss.x, boss.y, boss.width, boss.height);
+            if (boss) { // ボスが存在する場合のみ描画
+                // 爆発中であれば爆発画像、そうでなければ通常のボス画像を使用
+                const imageToDraw = boss.isExploding ? loadedImages.boss_explosion : loadedImages.boss;
+                if (imageToDraw) {
+                    ctx.drawImage(imageToDraw, boss.x, boss.y, boss.width, boss.height);
+                }
             }
 
             // Draw player projectiles (緑色の四角で描画)
