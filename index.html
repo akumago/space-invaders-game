@@ -240,8 +240,7 @@
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <video autoplay loop muted playsinline id="background-video">
-            <source src="background_loop.mp4" type="video/mp4">
-            Your browser does not support the video tag.
+            <source src="video/background_loop.mp4" type="video/mp4"> Your browser does not support the video tag.
         </video>
         <div id="score">Score: 0</div>
         <div id="lives">Lives: 3</div>
@@ -448,13 +447,13 @@
             showLoadingMessage();
             const imagePromises = [
                 // プレイヤーの画像: あなたの 'camera_biz.png' を使用します
-                loadImage('player', 'camera_biz.png'), 
+                loadImage('player', 'image/camera_biz.png'),  // ★修正箇所★
 
                 // インベーダーの画像: あなたの 'invader1.png' を使用します
-                loadImage('invader', 'invader1.png'), 
+                loadImage('invader', 'image/invader1.png'),  // ★修正箇所★
                 
                 // ボスの画像: あなたの 'invader2.png' を使用します
-                loadImage('boss', 'invader2.png'),
+                loadImage('boss', 'image/invader2.png'), // ★修正箇所★
 
                 // ↓↓ 以下は現在ファイルが不足しているか、不要とされた画像です ↓↓
                 // これらのファイルを追加して、ゲームで利用したい場合は、
@@ -493,7 +492,7 @@
                 // loadAudio('levelClear', 'audio/level_clear.wav'),
                 
                 // ボス被弾音
-                // loadAudio('bossHit', 'audio/boss_hit.wav'),   
+                // loadAudio('bossHit', 'audio/boss_hit.wav'),    
                 
                 // ボス撃破音
                 // loadAudio('bossDefeat', 'audio/boss_defeat.wav'), 
@@ -650,8 +649,8 @@
 
             createInvaders();
             if (currentLevel % 2 === 0 || currentLevel === MAX_LEVELS) { // 例: 偶数レベルまたは最終レベルでボス出現
-                 // ボスの出現条件は調整してください
-                 createBoss();
+                    // ボスの出現条件は調整してください
+                    createBoss();
             }
 
             updateScoreDisplay();
@@ -837,94 +836,81 @@
                         
                         if (invader.hp <= 0) {
                             invaders.splice(invaderIndex, 1); // Remove invader
-                            score += 10; // Score for invader
+                            score += 10;
                             updateScoreDisplay();
-                            // if (loadedAudio.invaderHit) loadedAudio.invaderHit.play(); // Play hit sound
+                            // if (loadedAudio.invaderHit) loadedAudio.invaderHit.play(); // 効果音
                         }
-                        // else {
-                        //      if (loadedAudio.invaderHit) loadedAudio.invaderHit.play(); // Play hit sound even if not defeated
-                        // }
-                        break; // Projectile hit an invader, so it's gone. Break from inner loop.
+                        // Projectile removed, so break from inner loop and continue with next projectile
+                        break;
                     }
                 }
-            }
+                // Collision Detection: Player Projectiles vs Boss
+                if (boss && projectiles.includes(p) && // Ensure projectile hasn't been removed by hitting an invader
+                    p.x < boss.x + boss.width &&
+                    p.x + p.width > boss.x &&
+                    p.y < boss.y + boss.height &&
+                    p.y + p.height > boss.y
+                ) {
+                    boss.hp--;
+                    projectiles.splice(pIndex, 1); // Remove projectile
+                    score += 50; // ボスへのダメージでスコア追加
+                    updateScoreDisplay();
+                    // if (loadedAudio.bossHit) loadedAudio.bossHit.play(); // ボス被弾音
 
-            // Collision Detection: Player Projectiles vs Boss
-            if (boss) {
-                for (let pIndex = projectiles.length - 1; pIndex >= 0; pIndex--) {
-                    const p = projectiles[pIndex];
-                    if (
-                        p.x < boss.x + boss.width &&
-                        p.x + p.width > boss.x &&
-                        p.y < boss.y + boss.height &&
-                        p.y + p.height > boss.y
-                    ) {
-                        // Collision!
-                        boss.hp--;
-                        projectiles.splice(pIndex, 1); // Remove projectile
-                        // if (loadedAudio.bossHit) loadedAudio.bossHit.play(); // Play boss hit sound
-
-                        if (boss.hp <= 0) {
-                            // if (loadedAudio.bossDefeat) loadedAudio.bossDefeat.play(); // Play boss defeat sound
-                            score += 100 * currentLevel; // Score for boss defeat
-                            updateScoreDisplay();
-                            boss = null; // Remove boss
-                        }
-                        break; // Projectile hit the boss, so it's gone.
+                    if (boss.hp <= 0) {
+                        // if (loadedAudio.bossDefeat) loadedAudio.bossDefeat.play(); // ボス撃破音
+                        boss = null; // Remove boss
+                        score += 500; // ボス撃破ボーナス
+                        updateScoreDisplay();
                     }
                 }
             }
 
             // Collision Detection: Invader Projectiles vs Player
-            if (!player.invincible) {
-                for (let pIndex = invaderProjectiles.length - 1; pIndex >= 0; pIndex--) {
-                    const p = invaderProjectiles[pIndex];
-                    if (
-                        p.x < player.x + player.width &&
-                        p.x + p.width > player.x &&
-                        p.y < player.y + player.height &&
-                        p.y + p.height > player.y
-                    ) {
-                        // Collision!
-                        invaderProjectiles.splice(pIndex, 1); // Remove projectile
-                        lives--;
-                        updateLivesDisplay();
-                        // if (loadedAudio.playerHit) loadedAudio.playerHit.play(); // Play player hit sound
+            for (let i = invaderProjectiles.length - 1; i >= 0; i--) {
+                const p = invaderProjectiles[i];
+                if (!player.invincible &&
+                    p.x < player.x + player.width &&
+                    p.x + p.width > player.x &&
+                    p.y < player.y + player.height &&
+                    p.y + p.height > player.y
+                ) {
+                    lives--;
+                    updateLivesDisplay();
+                    invaderProjectiles.splice(i, 1); // Remove projectile
+                    // if (loadedAudio.playerHit) loadedAudio.playerHit.play(); // プレイヤー被弾音
 
-                        if (lives <= 0) {
-                            endGame(false); // Game Over
-                        } else {
-                            player.invincible = true;
-                            player.invincibleTimer = 0;
-                            player.blinkTimer = 0;
-                        }
-                        break; // Projectile hit the player, so it's gone.
+                    if (lives <= 0) {
+                        endGame(false); // Game Over
+                        return; // Stop updating
+                    } else {
+                        player.invincible = true;
+                        player.invincibleTimer = 120; // 2 seconds at 60fps
+                        player.blinkTimer = 0; // Reset blink timer
                     }
                 }
             }
 
-            // Invincible Timer & Blinking
+            // Invincibility timer and blinking
             if (player.invincible) {
-                player.invincibleTimer++;
+                player.invincibleTimer--;
                 player.blinkTimer++;
-
-                // Blinking effect (every 10 frames)
-                if (player.blinkTimer >= 10) {
-                    player.blinkTimer = 0;
-                }
-
-                if (player.invincibleTimer >= 100) { // Invincible for 100 frames (approx 1.6 seconds)
+                if (player.invincibleTimer <= 0) {
                     player.invincible = false;
-                    player.invincibleTimer = 0;
                 }
             }
 
-
-            // Check for win condition (all invaders and boss defeated)
-            if (invaders.length === 0 && boss === null) {
-                endGame(true); // Win!
+            // Check if all invaders (and boss if exists) are destroyed
+            if (invaders.length === 0 && !boss) {
+                endGame(true); // Level Clear / Game Win
+                return; // Stop updating
             }
 
+            // Check if invaders reached bottom
+            if (invaders.some(invader => invader.y + invader.height > player.y)) {
+                endGame(false); // Invaders reached player
+                return; // Stop updating
+            }
 
             draw();
             animationFrameId = requestAnimationFrame(update);
@@ -936,13 +922,14 @@
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // Clear canvas
 
             // Draw player
-            // Blinking effect during invincibility
-            if (player.invincible && player.blinkTimer < 5) {
-                // Do not draw player (creating the blink)
+            // Blink effect for invincibility
+            if (player.invincible && player.blinkTimer % 10 < 5) {
+                // Do not draw if blinking
             } else {
                 if (loadedImages.player) {
                     ctx.drawImage(loadedImages.player, player.x, player.y, player.width, player.height);
                 } else {
+                    // Fallback if image not loaded
                     ctx.fillStyle = 'blue';
                     ctx.fillRect(player.x, player.y, player.width, player.height);
                 }
@@ -953,32 +940,12 @@
                 if (loadedImages.invader) {
                     ctx.drawImage(loadedImages.invader, invader.x, invader.y, invader.width, invader.height);
                 } else {
-                    ctx.fillStyle = 'red';
+                    ctx.fillStyle = 'green';
                     ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
                 }
             });
 
-            // Draw player projectiles
-            projectiles.forEach(p => {
-                if (loadedImages.projectile) { // If projectile image is loaded
-                    ctx.drawImage(loadedImages.projectile, p.x, p.y, p.width, p.height);
-                } else { // Otherwise, draw as a simple rectangle
-                    ctx.fillStyle = 'lime';
-                    ctx.fillRect(p.x, p.y, p.width, p.height);
-                }
-            });
-
-            // Draw invader projectiles
-            invaderProjectiles.forEach(p => {
-                if (loadedImages.invaderProjectile) { // If invader projectile image is loaded
-                    ctx.drawImage(loadedImages.invaderProjectile, p.x, p.y, p.width, p.height);
-                } else { // Otherwise, draw as a simple rectangle
-                    ctx.fillStyle = 'magenta';
-                    ctx.fillRect(p.x, p.y, p.width, p.height);
-                }
-            });
-
-            // Draw boss (if exists)
+            // Draw boss
             if (boss) {
                 if (loadedImages.boss) {
                     ctx.drawImage(loadedImages.boss, boss.x, boss.y, boss.width, boss.height);
@@ -986,46 +953,56 @@
                     ctx.fillStyle = 'purple';
                     ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
                 }
-                // Optionally draw boss HP bar
+                // Draw boss HP bar
+                const barWidth = boss.width;
+                const barHeight = 5;
+                const barY = boss.y + boss.height + 5;
                 ctx.fillStyle = 'red';
-                // ボスのHPはBOSS_HP_PER_LEVEL * currentLevelが最大HP
-                const maxBossHp = BOSS_HP_PER_LEVEL * currentLevel;
-                const hpBarWidth = boss.width * (boss.hp / maxBossHp);
-                ctx.fillRect(boss.x, boss.y + boss.height + 5, hpBarWidth, 5); // ボスの下側にHPバー
+                ctx.fillRect(boss.x, barY, barWidth, barHeight);
+                ctx.fillStyle = 'lime';
+                ctx.fillRect(boss.x, barY, (boss.hp / (BOSS_HP_PER_LEVEL * currentLevel)) * barWidth, barHeight);
+                ctx.strokeStyle = '#0f0';
+                ctx.strokeRect(boss.x, barY, barWidth, barHeight);
             }
+
+            // Draw projectiles (player's)
+            projectiles.forEach(p => {
+                // If you add a projectile image, use it here
+                // if (loadedImages.projectile) {
+                //     ctx.drawImage(loadedImages.projectile, p.x, p.y, p.width, p.height);
+                // } else {
+                    ctx.fillStyle = 'yellow';
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                // }
+            });
+
+            // Draw invader projectiles
+            invaderProjectiles.forEach(p => {
+                // If you add an invader projectile image, use it here
+                // if (loadedImages.invaderProjectile) {
+                //     ctx.drawImage(loadedImages.invaderProjectile, p.x, p.y, p.width, p.height);
+                // } else {
+                    ctx.fillStyle = 'red';
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                // }
+            });
         }
 
-        // --- Event Handlers (Player Input) ---
-
-        function playerShoot() {
-            if (playerShootCooldown <= 0) {
-                projectiles.push({
-                    x: player.x + player.width / 2 - 2, // Center projectile
-                    y: player.y,
-                    width: 4,
-                    height: 10
-                });
-                playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
-                // if (loadedAudio.shoot) loadedAudio.shoot.play(); // Play shoot sound
-            }
-        }
+        // --- Input Handlers ---
 
         function handleKeyDown(e) {
             if (currentGameState !== GAME_STATE.PLAYING) return;
-
             if (e.key === 'ArrowLeft' || e.key === 'a') {
                 player.movingLeft = true;
             } else if (e.key === 'ArrowRight' || e.key === 'd') {
                 player.movingRight = true;
-            } else if (e.key === ' ' || e.key === 'Spacebar') { // Spacebar
-                e.preventDefault(); // Prevent scrolling
-                playerShoot();
+            } else if (e.key === ' ' || e.key === 'w' || e.key === 'ArrowUp') {
+                shootProjectile();
             }
         }
 
         function handleKeyUp(e) {
             if (currentGameState !== GAME_STATE.PLAYING) return;
-
             if (e.key === 'ArrowLeft' || e.key === 'a') {
                 player.movingLeft = false;
             } else if (e.key === 'ArrowRight' || e.key === 'd') {
@@ -1033,52 +1010,52 @@
             }
         }
 
-        // For touch/mouse, we'll use playerTargetX and isPointerDown to control movement
         function handleTouchStart(e) {
-            if (currentGameState === GAME_STATE.START_SCREEN) {
-                // If on start screen, let the start button handle the click
-                return;
-            }
-
+            e.preventDefault(); // Prevent scrolling and zooming
             if (currentGameState === GAME_STATE.PLAYING) {
-                e.preventDefault(); // Prevent scrolling during gameplay
-                isPointerDown = true;
-                // Set target X to the touch location for player movement
                 const touchX = e.touches[0].clientX;
-                const rect = canvas.getBoundingClientRect();
-                playerTargetX = (touchX - rect.left) * (canvas.width / rect.width);
-                playerShoot(); // Also shoot on touch start
+                const rect = canvas.getBoundingClientRect(); // Get canvas position relative to viewport
+                const scaleX = canvas.width / rect.width;    // Scale factor for X
+                const touchXInCanvas = (touchX - rect.left) * scaleX;
+                playerTargetX = touchXInCanvas;
+                isPointerDown = true;
+                shootProjectile(); // Shoot on touch down
+            } else if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
+                // Allow interaction with start/restart button if not playing
+                // This click handler is already on the button directly.
+                // No need to trigger it from body touch start.
             }
         }
 
         function handleTouchMove(e) {
+            e.preventDefault(); // Prevent scrolling
             if (currentGameState === GAME_STATE.PLAYING && isPointerDown) {
-                e.preventDefault(); // Prevent scrolling during gameplay
                 const touchX = e.touches[0].clientX;
                 const rect = canvas.getBoundingClientRect();
-                playerTargetX = (touchX - rect.left) * (canvas.width / rect.width);
+                const scaleX = canvas.width / rect.width;
+                const touchXInCanvas = (touchX - rect.left) * scaleX;
+                playerTargetX = touchXInCanvas;
             }
         }
 
         function handleTouchEnd(e) {
             if (currentGameState === GAME_STATE.PLAYING) {
                 isPointerDown = false;
-                playerTargetX = null; // Stop aiming for a target
+                playerTargetX = null; // Stop movement when touch ends
             }
         }
 
         function handleMouseDown(e) {
-            if (currentGameState === GAME_STATE.START_SCREEN) {
-                // If on start screen, let the start button handle the click
-                return;
-            }
-
             if (currentGameState === GAME_STATE.PLAYING) {
-                isPointerDown = true;
                 const mouseX = e.clientX;
                 const rect = canvas.getBoundingClientRect();
-                playerTargetX = (mouseX - rect.left) * (canvas.width / rect.width);
-                playerShoot(); // Also shoot on mouse down
+                const scaleX = canvas.width / rect.width;
+                const mouseXInCanvas = (mouseX - rect.left) * scaleX;
+                playerTargetX = mouseXInCanvas;
+                isPointerDown = true;
+                shootProjectile(); // Shoot on mouse down
+            } else if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
+                // Allow interaction with start/restart button if not playing
             }
         }
 
@@ -1086,19 +1063,34 @@
             if (currentGameState === GAME_STATE.PLAYING && isPointerDown) {
                 const mouseX = e.clientX;
                 const rect = canvas.getBoundingClientRect();
-                playerTargetX = (mouseX - rect.left) * (canvas.width / rect.width);
+                const scaleX = canvas.width / rect.width;
+                const mouseXInCanvas = (mouseX - rect.left) * scaleX;
+                playerTargetX = mouseXInCanvas;
             }
         }
 
         function handleMouseUp(e) {
             if (currentGameState === GAME_STATE.PLAYING) {
                 isPointerDown = false;
-                playerTargetX = null; // Stop aiming for a target
+                playerTargetX = null; // Stop movement when mouse button released
             }
         }
 
-        // --- Initialize game when DOM is ready ---
-        window.addEventListener('DOMContentLoaded', init);
+        function shootProjectile() {
+            if (playerShootCooldown <= 0) {
+                projectiles.push({
+                    x: player.x + player.width / 2 - 2,
+                    y: player.y,
+                    width: 4,
+                    height: 10
+                });
+                playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                // if (loadedAudio.shoot) loadedAudio.shoot.play(); // 射撃音
+            }
+        }
+
+        // --- Start Game ---
+        init(); // Initialize the game when the page loads
     </script>
 </body>
 </html>
