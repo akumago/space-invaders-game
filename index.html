@@ -268,21 +268,21 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_BASE_SPEED = 15; // ★修正: 20から15に減少（インベーダーの初期移動速度）
+        const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
-        const INVADER_PROJECTILE_SPEED = 4; // ★修正: 5から4に減少（インベーダーの弾の速度）
-        const INVADER_ROWS = 5;
-        const INVADER_COLS = 8;
-        const INVADER_WIDTH = 40; // invader1.pngのサイズを大きく表示するため40に調整
-        const INVADER_HEIGHT = 40; // invader1.pngのサイズを大きく表示するため40に調整
+        const INVADER_PROJECTILE_SPEED = 4; // 修正: 5から4に減少（インベーダーの弾の速度）
+        const INVADER_ROWS = 3; // ★修正: 5から3に減少（敵の数）
+        const INVADER_COLS = 7; // ★修正: 8から7に減少（敵の数）
+        const INVADER_WIDTH = 45; // ★修正: 40から45に増加（敵の表示サイズ）
+        const INVADER_HEIGHT = 45; // ★修正: 40から45に増加（敵の表示サイズ）
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
-        const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
+        const BOSS_HP_PER_LEVEL = 7; // ★修正: 5から7に固定（ボスのHP）
         const MAX_LEVELS = 10; // 最大レベル数を10に設定
-        const PLAYER_WIDTH = 30; // invader3.pngのサイズに合わせて調整してください。
-        const PLAYER_HEIGHT = 30; // invader3.pngのサイズに合わせて調整してください。
-        const PLAYER_SHOOT_COOLDOWN_MAX = 20; // 発射間隔を少し長くして安定させる
+        const PLAYER_WIDTH = 40; // ★修正: 30から40に増加（自機の表示サイズ）
+        const PLAYER_HEIGHT = 40; // ★修正: 30から40に増加（自機の表示サイズ）
+        const PLAYER_SHOOT_COOLDOWN_MAX = 15; // ★修正: 20から15に減少（自機の発射間隔）
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -585,7 +585,7 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        // ★修正: レベルアップによる速度上昇を緩やかに
+                        // レベルアップによる速度上昇を緩やかに
                         dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 5),
                         hp: 1
                     });
@@ -600,7 +600,7 @@
                 width: 100,
                 height: 80,
                 dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5,
-                hp: BOSS_HP_PER_LEVEL * currentLevel,
+                hp: BOSS_HP_PER_LEVEL, // ★修正: ボスのHPを定数BOSS_HP_PER_LEVELで固定
                 shootTimer: 0,
                 shootInterval: Math.max(30, 60 - (currentLevel - 1) * 10)
             };
@@ -626,7 +626,7 @@
                 player.blinkTimer = 0;
             }
 
-            boss = null; // ★修正: ボスは最初に生成しない（インベーダー全滅後に生成）
+            boss = null; // ボスは最初に生成しない（インベーダー全滅後に生成）
             projectiles = [];
             invaderProjectiles = [];
 
@@ -921,7 +921,7 @@
                 }
             }
 
-            // ★修正: レベルクリア条件の変更
+            // レベルクリア条件の変更
             // 1. 全てのインベーダーが破壊された場合
             if (invaders.length === 0) {
                 // 2. ボスがまだ出現していない場合、ボスを生成
