@@ -269,17 +269,16 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_BASE_SPEED = 20; // ★修正: 1秒あたりのインベーダーの基本移動速度をさらに遅くする
+        const INVADER_BASE_SPEED = 20; // 1秒あたりのインベーダーの基本移動速度
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
         const INVADER_PROJECTILE_SPEED = 5;
         const INVADER_ROWS = 5;
         const INVADER_COLS = 8;
-        const INVADER_WIDTH = 40; // ★修正: invader1.pngのサイズを大きく表示するため40に調整
-        const INVADER_HEIGHT = 40; // ★修正: invader1.pngのサイズを大きく表示するため40に調整
+        const INVADER_WIDTH = 40; // invader1.pngのサイズを大きく表示するため40に調整
+        const INVADER_HEIGHT = 40; // invader1.pngのサイズを大きく表示するため40に調整
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
-        // 画像サイズ(40x40)に対して、間隔を狭めても重ならないようにする
-        const INVADER_SPACING_X = 10; // ★修正: インベーダー間の横方向の間隔を詰める（画像サイズを大きくしたため）
-        const INVADER_SPACING_Y = 15; // ★修正: インベーダー間の縦方向の間隔を調整
+        const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
+        const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
         const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
         const MAX_LEVELS = 5; // 最大レベル数
         const PLAYER_WIDTH = 30; // invader3.pngのサイズに合わせて調整してください。
@@ -619,6 +618,7 @@
                 lives = 3;
                 currentLevel = 1;
             } else {
+                // 既存のゲームからの継続の場合、プレイヤーの状態のみリセット
                 player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
                 player.movingLeft = false;
                 player.movingRight = false;
@@ -627,11 +627,16 @@
                 player.blinkTimer = 0;
             }
 
-            boss = null;
+            boss = null; // ボスをリセット
             projectiles = [];
             invaderProjectiles = [];
 
             createInvaders();
+            // ボス出現条件: レベル2、レベル4、最終レベル (Level 5) でボスが出現
+            // もしレベル1クリア後にもボスを出現させたい場合は、例えば以下のように変更できます:
+            // if (currentLevel === 1 || currentLevel % 2 === 0 || currentLevel === MAX_LEVELS) {
+            //     createBoss();
+            // }
             if (currentLevel % 2 === 0 || currentLevel === MAX_LEVELS) {
                 createBoss();
             }
@@ -640,7 +645,7 @@
             updateLivesDisplay();
             updateLevelDisplay();
             hideMessageBox();
-            hideStartButton(); // これで動画は再生しつつキャンバスが表示される
+            hideStartButton(); // ゲーム開始時に動画を非表示にしキャンバスを表示
 
             currentGameState = GAME_STATE.PLAYING;
             lastTimestamp = performance.now();
@@ -659,7 +664,7 @@
         }
 
         function endGame(win) {
-            currentGameState = GAME_STATE.GAME_OVER;
+            currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を一時的にGAME_OVERに設定
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
@@ -669,43 +674,67 @@
                 loadedAudio.backgroundMusic.stop();
             }
 
+            // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
             if (backgroundVideo) {
-                backgroundVideo.style.display = 'block'; // ゲームオーバー時に動画を表示
-                backgroundVideo.currentTime = 0; // 動画を最初から再生
-                backgroundVideo.muted = false;
-                backgroundVideo.volume = Howler.volume();
-                backgroundVideo.play().catch(e => console.error("Video playback error on game over:", e));
-                backgroundVideo.style.zIndex = -1; // 動画をゲームオーバーメッセージボックスより奥に
+                backgroundVideo.style.display = 'none';
+                backgroundVideo.pause();
+                backgroundVideo.currentTime = 0;
             }
-            canvas.style.display = 'none';
+            canvas.style.display = 'block'; // キャンバスをメッセージボックスの背後に表示
 
             let message = '';
             const playAgainButton = messageBox.querySelector('button');
 
             if (win) {
                 if (currentLevel >= MAX_LEVELS) {
+                    // 最終レベルをクリアした場合
                     message = `You Win! Final Score: ${score}`;
                     playAgainButton.innerText = "Play Again";
                     playAgainButton.onclick = () => {
-                        hideMessageBox(); // メッセージボックスを隠す
-                        showStartButton(); // スタート画面に戻す（TAP TO START状態）
+                        hideMessageBox();
+                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
                     };
+                    // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                    if (backgroundVideo) {
+                        backgroundVideo.style.display = 'block';
+                        backgroundVideo.currentTime = 0;
+                        backgroundVideo.muted = false;
+                        backgroundVideo.volume = Howler.volume();
+                        backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                        backgroundVideo.style.zIndex = -1;
+                    }
+                    canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
                 } else {
+                    // 中間レベルをクリアした場合
                     message = `Level ${currentLevel} Clear! Score: ${score}`;
-                    currentLevel++;
+                    currentLevel++; // 次のレベルへ進む
                     playAgainButton.innerText = `Next Level (${currentLevel})`;
                     playAgainButton.onclick = () => {
-                        hideMessageBox(); // メッセージボックスを隠す
-                        showStartButton(); // スタート画面に戻す（TAP TO START状態）
+                        hideMessageBox();
+                        // 次のレベルへ直接移行し、最初のスタート画面に戻らない
+                        startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
                     };
+                    // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
+                    canvas.style.display = 'block'; // キャンバスは表示したまま
                 }
             } else {
+                // ゲームオーバー（敗北）の場合
                 message = `Game Over! Score: ${score}`;
                 playAgainButton.innerText = "Play Again";
                 playAgainButton.onclick = () => {
-                    hideMessageBox(); // メッセージボックスを隠す
-                    showStartButton(); // スタート画面に戻す（TAP TO START状態）
+                    hideMessageBox();
+                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
                 };
+                // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                if (backgroundVideo) {
+                    backgroundVideo.style.display = 'block';
+                    backgroundVideo.currentTime = 0;
+                    backgroundVideo.muted = false;
+                    backgroundVideo.volume = Howler.volume();
+                    backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                    backgroundVideo.style.zIndex = -1;
+                }
+                canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
             }
             showMessage(message);
         }
@@ -916,66 +945,6 @@
 
             draw();
             animationFrameId = requestAnimationFrame(update);
-        }
-
-        // --- Drawing Functions ---
-
-        function draw() {
-            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
-
-            // Draw player
-            if (player.invincible && player.blinkTimer % 10 < 5) {
-                // Do not draw if blinking
-            } else {
-                if (loadedImages.player) {
-                    ctx.drawImage(loadedImages.player, player.x, player.y, player.width, player.height);
-                } else {
-                    ctx.fillStyle = 'blue';
-                    ctx.fillRect(player.x, player.y, player.width, player.height);
-                }
-            }
-
-            // Draw invaders
-            invaders.forEach(invader => {
-                if (loadedImages.invader) {
-                    ctx.drawImage(loadedImages.invader, invader.x, invader.y, invader.width, invader.height);
-                } else {
-                    ctx.fillStyle = 'green';
-                    ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
-                }
-            });
-
-            // Draw boss
-            if (boss) {
-                if (loadedImages.boss) {
-                    ctx.drawImage(loadedImages.boss, boss.x, boss.y, boss.width, boss.height);
-                } else {
-                    ctx.fillStyle = 'purple';
-                    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
-                }
-                // Draw boss HP bar
-                const barWidth = boss.width;
-                const barHeight = 5;
-                const barY = boss.y + boss.height + 5;
-                ctx.fillStyle = 'red';
-                ctx.fillRect(boss.x, barY, barWidth, barHeight);
-                ctx.fillStyle = 'lime';
-                ctx.fillRect(boss.x, barY, (boss.hp / (BOSS_HP_PER_LEVEL * currentLevel)) * barWidth, barHeight);
-                ctx.strokeStyle = '#0f0';
-                ctx.strokeRect(boss.x, barY, barWidth, barHeight);
-            }
-
-            // Draw projectiles (player's)
-            projectiles.forEach(p => {
-                ctx.fillStyle = 'yellow';
-                ctx.fillRect(p.x, p.y, p.width, p.height);
-            });
-
-            // Draw invader projectiles
-            invaderProjectiles.forEach(p => {
-                ctx.fillStyle = 'red';
-                ctx.fillRect(p.x, p.y, p.width, p.height);
-            });
         }
 
         // --- Input Handlers ---
