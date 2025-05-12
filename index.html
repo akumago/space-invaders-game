@@ -280,7 +280,7 @@
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
         const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
-        const MAX_LEVELS = 5; // 最大レベル数
+        const MAX_LEVELS = 10; // ★修正: 最大レベル数を10に設定
         const PLAYER_WIDTH = 30; // invader3.pngのサイズに合わせて調整してください。
         const PLAYER_HEIGHT = 30; // invader3.pngのサイズに合わせて調整してください。
         const PLAYER_SHOOT_COOLDOWN_MAX = 20; // 発射間隔を少し長くして安定させる
@@ -632,12 +632,8 @@
             invaderProjectiles = [];
 
             createInvaders();
-            // ボス出現条件: レベル2、レベル4、最終レベル (Level 5) でボスが出現
-            // もしレベル1クリア後にもボスを出現させたい場合は、例えば以下のように変更できます:
-            // if (currentLevel === 1 || currentLevel % 2 === 0 || currentLevel === MAX_LEVELS) {
-            //     createBoss();
-            // }
-            if (currentLevel % 2 === 0 || currentLevel === MAX_LEVELS) {
+            // ★修正: すべてのレベルでボスが出現するように条件を変更
+            if (currentLevel >= 1) {
                 createBoss();
             }
 
