@@ -36,7 +36,6 @@
             width: 420px; /* GAME_WIDTHと同期 */
             height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
             overflow: hidden; /* はみ出たコンテンツを隠す */
-            /* background-color: black; */ /* ゲーム中の背景色（動画が読み込まれない場合のフォールバック。キャンバスの背景色で上書きされるので不要） */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
             z-index: 1; /* 他のUIより手前 */
@@ -280,7 +279,7 @@
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
         const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
-        const MAX_LEVELS = 10; // ★修正: 最大レベル数を10に設定
+        const MAX_LEVELS = 10; // 最大レベル数を10に設定
         const PLAYER_WIDTH = 30; // invader3.pngのサイズに合わせて調整してください。
         const PLAYER_HEIGHT = 30; // invader3.pngのサイズに合わせて調整してください。
         const PLAYER_SHOOT_COOLDOWN_MAX = 20; // 発射間隔を少し長くして安定させる
@@ -329,7 +328,7 @@
         let backgroundVideo; // 背景動画要素
 
         // Invader movement flags
-        let shouldInvadersMoveDown = false;
+        let shouldInvadersMoveDown = false; // 現在は使われていないが、以前のロジックの名残
         let lastInvaderMoveDownTime = 0;
         const INVADER_MOVE_DOWN_INTERVAL = 500; // インベーダーが下に移動する間隔（ミリ秒）
 
@@ -445,7 +444,7 @@
             document.body.addEventListener('mousemove', handleMouseMove);
             document.body.addEventListener('mouseup', handleMouseUp);
 
-            // Screen orientation lock
+            // Screen orientation lock (非対応デバイスでは警告が出るが、処理は続行)
             if (screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('portrait')
                     .then(() => console.log("画面の向きを縦向きにロックしました。"))
@@ -632,8 +631,8 @@
             invaderProjectiles = [];
 
             createInvaders();
-            // ★修正: すべてのレベルでボスが出現するように条件を変更
-            if (currentLevel >= 1) {
+            // すべてのレベルでボスが出現するように条件を設定
+            if (currentLevel >= 1) { // 現在のレベルが1以上であればボスを生成
                 createBoss();
             }
 
@@ -939,8 +938,40 @@
                 return;
             }
 
-            draw();
+            draw(); // ★ここが重要です。draw関数が正しく呼び出されていることを確認。
             animationFrameId = requestAnimationFrame(update);
+        }
+
+        // --- Drawing ---
+        // draw関数がここにあることを確認してください。
+        function draw() {
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // Clear canvas
+
+            // Draw player
+            // プレイヤーが無敵状態の場合は点滅させる
+            if (player && loadedImages.player && (!player.invincible || player.blinkTimer % 10 < 5)) {
+                ctx.drawImage(loadedImages.player, player.x, player.y, player.width, player.height);
+            }
+
+            // Draw invaders
+            invaders.forEach(invader => {
+                if (loadedImages.invader) {
+                    ctx.drawImage(loadedImages.invader, invader.x, invader.y, invader.width, invader.height);
+                }
+            });
+
+            // Draw boss
+            if (boss && loadedImages.boss) {
+                ctx.drawImage(loadedImages.boss, boss.x, boss.y, boss.width, boss.height);
+            }
+
+            // Draw player projectiles (緑色の四角で描画)
+            ctx.fillStyle = '#0f0'; // Green
+            projectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
+
+            // Draw invader projectiles (赤色の四角で描画)
+            ctx.fillStyle = '#f00'; // Red
+            invaderProjectiles.forEach(p => ctx.fillRect(p.x, p.y, p.width, p.height));
         }
 
         // --- Input Handlers ---
