@@ -82,6 +82,37 @@
       display: none; /* Initially hidden */
       z-index: 30;
     }
+    /* ボリュームスライダーの基本的なスタイル調整 */
+    #volumeSlider {
+        -webkit-appearance: none; /* Safariなどのデフォルトスタイルをリセット */
+        appearance: none;
+        width: 150px;
+        height: 8px;
+        background: #d3d3d3;
+        outline: none;
+        opacity: 0.7;
+        transition: opacity .2s;
+        border-radius: 4px;
+    }
+    #volumeSlider:hover {
+        opacity: 1;
+    }
+    #volumeSlider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
+    #volumeSlider::-moz-range-thumb {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: #4CAF50;
+        cursor: pointer;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
 </head>
@@ -96,6 +127,39 @@
     <button onclick="startGame(true)">Play Again</button>
   </div>
   <div id="loadingMessage">Loading...</div>
+
+  <div id="startButtonContainer" style="
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 20px;
+    z-index: 40; /* loadingMessageより上に */
+  ">
+    <h1>SPACE INVADERS</h1>
+    <p>Improved</p>
+    <button id="startButton" style="
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 24px;
+      margin-top: 30px;
+      transition: background-color 0.3s ease;
+    ">
+      TAP TO START
+    </button>
+    <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+      <span>Volume</span>
+      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
+    </div>
+  </div>
 </div>
 
 <script>
@@ -181,18 +245,17 @@
 
   // Asset Loading Variables
   let imagesLoadedCount = 0;
-  // ここを修正しました！
   const ASSET_PATHS = {
-    invader: 'invader1.png', // 修正済み
-    boss: 'invader2.png', // 修正済み
-    player: 'camera_biz.png' // 変更なし
+    invader: 'invader1.png',
+    boss: 'invader2.png',
+    player: 'camera_biz.png'
   };
   let loadedImages = {}; // Stores actual Image objects after loading
 
   // Audio Loading Variables
-  let audiosLoadedCount = 0; // 新しく追加
+  let audiosLoadedCount = 0;
   const AUDIO_PATHS = {
-    backgroundMusic: 'bgm_amelo1.mp3', // 修正済み
+    backgroundMusic: 'bgm_amelo1.mp3',
     // 他のサウンドエフェクトがあればここに追加します。例:
     // playerShoot: 'sounds/player_shoot.mp3',
     // invaderHit: 'sounds/invader_hit.mp3',
@@ -207,6 +270,10 @@
   const messageBox = document.getElementById('messageBox');
   const messageText = document.getElementById('message');
   const loadingMessage = document.getElementById('loadingMessage');
+  const startButtonContainer = document.getElementById('startButtonContainer'); // 追加
+  const startButton = document.getElementById('startButton'); // 追加
+  const volumeSlider = document.getElementById('volumeSlider'); // 追加
+
 
   // --- Initialization ---
 
@@ -227,7 +294,8 @@
         audiosLoadedCount === Object.keys(AUDIO_PATHS).length) {
       hideLoadingMessage();
       initGameEssentials();
-      startGame(true); // 全てロードされたらゲームを開始
+      // ロード完了後、直接ゲームを開始せず、スタートボタンを表示する
+      showStartButton(); // 変更
     }
   }
 
@@ -318,7 +386,43 @@
     if (Object.keys(ASSET_PATHS).length === 0 && Object.keys(AUDIO_PATHS).length === 0) {
         hideLoadingMessage();
         initGameEssentials();
-        startGame(true);
+        showStartButton(); // 変更
+    }
+
+    // === ここから追加（音量コントロール関連） ===
+    // ローカルストレージから音量を読み込む。なければデフォルト値0.5
+    let savedVolume = localStorage.getItem('gameVolume');
+    if (savedVolume !== null) {
+      Howler.volume(parseFloat(savedVolume));
+      volumeSlider.value = parseFloat(savedVolume); // スライダーの位置を更新
+    } else {
+      Howler.volume(0.5); // デフォルトの音量
+      volumeSlider.value = 0.5; // スライダーの位置を更新
+    }
+
+    // 音量スライダーのイベントリスナー
+    volumeSlider.addEventListener('input', (e) => {
+      const newVolume = parseFloat(e.target.value);
+      Howler.volume(newVolume); // Howler.jsのグローバル音量を更新
+      localStorage.setItem('gameVolume', newVolume); // 音量設定をローカルストレージに保存
+    });
+    // === ここまで追加 ===
+
+    // 画面の向きを縦向きにロックする
+    if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('portrait')
+        .then(() => {
+          console.log('画面が縦向きにロックされました。');
+        })
+        .catch((error) => {
+          console.warn('画面の向きをロックできませんでした。:', error);
+          // ロックできなかった場合の代替処理（例: メッセージ表示）
+          // alert('このゲームは縦画面推奨です。画面を縦にしてください。');
+        });
+    } else {
+      console.warn('Screen Orientation API はサポートされていません。');
+      // APIがサポートされていない場合の代替処理
+      // 例えば、CSSで縦向きの表示を促すスタイルを適用するなど
     }
   }
 
@@ -410,7 +514,7 @@
       loadedAudio.backgroundMusic.stop(); // 既に再生中であれば停止
       loadedAudio.backgroundMusic.play();
       loadedAudio.backgroundMusic.loop(true); // ループ再生
-      loadedAudio.backgroundMusic.volume(0.5); // ボリューム調整 (必要に応じて)
+      loadedAudio.backgroundMusic.volume(Howler.volume()); // グローバル音量設定に従う
     }
 
     animationFrameId = requestAnimationFrame(update);
@@ -832,6 +936,19 @@
   function handleMouseUp() {
     mouseMoveActive = false;
     // No additional fire on mouse up, already fired on mouse down.
+  }
+
+  // --- UI Utility Functions --- (追加)
+  function showStartButton() {
+    startButtonContainer.style.display = 'flex';
+    startButton.onclick = () => {
+      hideStartButton();
+      startGame(true); // ユーザー操作でゲームを開始
+    };
+  }
+
+  function hideStartButton() {
+    startButtonContainer.style.display = 'none';
   }
 
   // --- Window Load Event ---
