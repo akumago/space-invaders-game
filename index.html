@@ -270,19 +270,23 @@
         const PLAYER_PROJECTILE_SPEED = 10;
         const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
-        const INVADER_PROJECTILE_SPEED = 4; // 修正: 5から4に減少（インベーダーの弾の速度）
-        const INVADER_ROWS = 3; // ★修正: 5から3に減少（敵の数）
-        const INVADER_COLS = 7; // ★修正: 8から7に減少（敵の数）
-        const INVADER_WIDTH = 45; // ★修正: 40から45に増加（敵の表示サイズ）
-        const INVADER_HEIGHT = 45; // ★修正: 40から45に増加（敵の表示サイズ）
+        const ENEMY_PROJECTILE_SPEED = 4; // インベーダーとボスの弾の速度 (旧 INVADER_PROJECTILE_SPEED)
+        const INVADER_ROWS = 5; // ★修正: 3から5に戻す（敵の行数）
+        const INVADER_COLS = 6; // ★修正: 7から6に減少（敵の列数）
+        const INVADER_WIDTH = 55; // ★修正: 45から55に増加（敵の表示サイズ）
+        const INVADER_HEIGHT = 55; // ★修正: 45から55に増加（敵の表示サイズ）
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
-        const BOSS_HP_PER_LEVEL = 7; // ★修正: 5から7に固定（ボスのHP）
+        const BOSS_HP_PER_LEVEL = 7; // ボスのHPを定数BOSS_HP_PER_LEVELで固定
         const MAX_LEVELS = 10; // 最大レベル数を10に設定
-        const PLAYER_WIDTH = 40; // ★修正: 30から40に増加（自機の表示サイズ）
-        const PLAYER_HEIGHT = 40; // ★修正: 30から40に増加（自機の表示サイズ）
-        const PLAYER_SHOOT_COOLDOWN_MAX = 15; // ★修正: 20から15に減少（自機の発射間隔）
+        const PLAYER_WIDTH = 40; // 修正: 30から40に増加（自機の表示サイズ）
+        const PLAYER_HEIGHT = 40; // 修正: 30から40に増加（自機の表示サイズ）
+        const PLAYER_SHOOT_COOLDOWN_MAX = 15; // 修正: 20から15に減少（自機の発射間隔）
+
+        // ボスの放射状ミサイル関連の定数
+        const BOSS_RADIAL_PROJECTILE_COUNT_BASE = 3; // ボスの初期放射状ミサイル数
+        const BOSS_RADIAL_SPREAD_ANGLE = Math.PI * 0.75; // 放射状に広がる角度（ラジアン、例: 135度）
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -296,7 +300,7 @@
         let player;
         let invaders = [];
         let projectiles = [];
-        let invaderProjectiles = [];
+        let invaderProjectiles = []; // invaderProjectilesはボスや通常の敵の弾を扱う
         let score = 0;
         let lives = 3;
         let currentLevel = 1;
@@ -600,9 +604,10 @@
                 width: 100,
                 height: 80,
                 dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5,
-                hp: BOSS_HP_PER_LEVEL, // ★修正: ボスのHPを定数BOSS_HP_PER_LEVELで固定
+                hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
                 shootTimer: 0,
-                shootInterval: Math.max(30, 60 - (currentLevel - 1) * 10)
+                // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15) // ★修正: 最初の難易度を下げた
             };
         }
 
@@ -774,9 +779,13 @@
             projectiles.forEach(p => p.y -= PLAYER_PROJECTILE_SPEED);
             projectiles = projectiles.filter(p => p.y > 0);
 
-            // Update invader projectiles
-            invaderProjectiles.forEach(p => p.y += INVADER_PROJECTILE_SPEED);
-            invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT);
+            // Update invader projectiles (ボスの弾も含むのでdx, dyを使う)
+            invaderProjectiles.forEach(p => {
+                p.x += p.dx;
+                p.y += p.dy;
+            });
+            invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT && p.x > -p.width && p.x < GAME_WIDTH + p.width);
+
 
             // Update invader movement
             let hitEdgeThisFrame = false; // 今回のフレームで端に到達したかどうかのフラグ
@@ -811,14 +820,16 @@
                 }
             }
 
-            // Invader shooting
+            // Invader shooting (通常のインベーダーの弾)
             if (invaders.length > 0 && Math.random() < 0.005 * (1 + currentLevel * 0.1)) {
                 const shootingInvader = invaders[Math.floor(Math.random() * invaders.length)];
                 invaderProjectiles.push({
                     x: shootingInvader.x + shootingInvader.width / 2 - 2,
                     y: shootingInvader.y + shootingInvader.height,
                     width: 4,
-                    height: 10
+                    height: 10,
+                    dx: 0, // 下向きのみ
+                    dy: ENEMY_PROJECTILE_SPEED // ★修正: ENEMY_PROJECTILE_SPEEDを使用
                 });
             }
 
@@ -833,15 +844,29 @@
                     boss.dx *= -1;
                 }
 
-                // Boss shooting
+                // Boss shooting (放射状ミサイル)
                 boss.shootTimer++;
                 if (boss.shootTimer >= boss.shootInterval) {
-                    invaderProjectiles.push({
-                        x: boss.x + boss.width / 2 - 2,
-                        y: boss.y + boss.height,
-                        width: 4,
-                        height: 10
-                    });
+                    // レベルに応じてミサイル数を増やす (例: 2レベルごとに1発追加)
+                    const numProjectiles = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(currentLevel / 2);
+                    const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2; // 下向き中心に広がる角度を計算
+
+                    for (let i = 0; i < numProjectiles; i++) {
+                        // numProjectilesが1の場合の0除算を避ける
+                        const angle = startAngle + (i * BOSS_RADIAL_SPREAD_ANGLE / (numProjectiles > 1 ? numProjectiles - 1 : 1));
+                        const speed = ENEMY_PROJECTILE_SPEED; // ボスの弾速もENEMY_PROJECTILE_SPEEDを使用
+                        const dx = speed * Math.cos(angle); // X成分
+                        const dy = speed * Math.sin(angle); // Y成分 (canvasのY軸は下向きなのでsinが正で下向き)
+
+                        invaderProjectiles.push({
+                            x: boss.x + boss.width / 2 - 2, // ボスの中心から
+                            y: boss.y + boss.height,
+                            width: 4,
+                            height: 10,
+                            dx: dx,
+                            dy: dy
+                        });
+                    }
                     boss.shootTimer = 0;
                 }
             }
