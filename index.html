@@ -269,7 +269,8 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_SPEED = 0.8; // ★変更: インベーダーの横移動速度を少し遅くしました
+        const INVADER_BASE_SPEED = 60; // ★変更: 1秒あたりのピクセル移動量を定義
+        const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
         const INVADER_PROJECTILE_SPEED = 5;
         const INVADER_ROWS = 5;
         const INVADER_COLS = 8;
@@ -324,6 +325,11 @@
         let volumeSlider; // 音量スライダー
         let backgroundMusic; // Howler.js BGM
         let backgroundVideo; // 背景動画要素
+
+        // Invader movement flags
+        let shouldInvadersMoveDown = false; // ★追加: インベーダーが下に移動すべきかどうかのフラグ
+        let lastInvaderMoveDownTime = 0; // ★追加: 最後にインベーダーが下に移動したタイムスタンプ
+        const INVADER_MOVE_DOWN_INTERVAL = 500; // ★追加: インベーダーが下に移動する間隔（ミリ秒）
 
         // --- Initialization ---
 
@@ -547,9 +553,6 @@
 
         function createInvaders() {
             invaders = [];
-            // ★変更: INVADER_COLS * (INVADER_WIDTH + INVADER_SPACING) の計算結果が偶数にならないと、
-            // GAME_WIDTHから引いたときに小数点が出て、それがinvader.xに影響する可能性があるので、
-            // 厳密に中央に配置されるよう調整
             const totalInvaderWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING);
             const startX = (GAME_WIDTH - totalInvaderWidth) / 2;
             const startY = 80; // インベーダーの初期Y座標は高く保つ
@@ -561,7 +564,7 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        dx: INVADER_SPEED + (currentLevel - 1) * 0.1, // ★変更: レベルアップでの速度増加を緩やかに
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10), // ★変更: dxは速度の目安として残す（後でdeltaTimeで調整）
                         hp: 1
                     });
                 }
@@ -577,7 +580,7 @@
                 y: 30,
                 width: 100,
                 height: 80,
-                dx: (INVADER_SPEED + (currentLevel - 1) * 0.1) * 1.5,
+                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5, // ★変更: dxは速度の目安として残す（後でdeltaTimeで調整）
                 hp: BOSS_HP_PER_LEVEL * currentLevel,
                 shootTimer: 0,
                 shootInterval: Math.max(30, 60 - (currentLevel - 1) * 10)
@@ -632,6 +635,10 @@
             }
 
             animationFrameId = requestAnimationFrame(update);
+
+            // ★追加: ゲーム開始時にインベーダーが下に移動するフラグをリセット
+            shouldInvadersMoveDown = false; 
+            lastInvaderMoveDownTime = performance.now(); 
         }
 
         function endGame(win) {
@@ -681,7 +688,7 @@
         // --- Game Loop ---
 
         function update(timestamp) {
-            const deltaTime = (timestamp - lastTimestamp) / 1000;
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // 秒単位
             lastTimestamp = timestamp;
 
             if (currentGameState !== GAME_STATE.PLAYING) {
@@ -722,25 +729,33 @@
             invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT);
 
             // Update invader movement
-            let hitEdge = false;
+            let currentHitEdge = false; // 今回のフレームで端に到達したかどうかのフラグ
             invaders.forEach(invader => {
-                invader.x += invader.dx;
-                // ★変更: 端に到達した際に、少しだけX座標を戻して、すぐに反転させ、
-                // 次のフレームでまた端に到達するのを防ぐ
+                invader.x += invader.dx * deltaTime; // ★変更: deltaTimeを掛けて速度を調整
+                // 端に到達したかの判定と位置調整
                 if (invader.x + invader.width > GAME_WIDTH) {
-                    invader.x = GAME_WIDTH - invader.width; // 画面内に収める
-                    hitEdge = true;
+                    invader.x = GAME_WIDTH - invader.width;
+                    currentHitEdge = true;
                 } else if (invader.x < 0) {
-                    invader.x = 0; // 画面内に収める
-                    hitEdge = true;
+                    invader.x = 0;
+                    currentHitEdge = true;
                 }
             });
 
-            if (hitEdge) {
+            // ★変更: 端に到達した場合の処理
+            if (currentHitEdge) {
+                // 左右反転は常に実行
                 invaders.forEach(invader => {
-                    invader.dx *= -1; // Reverse direction
-                    invader.y += 20; // Move down
+                    invader.dx *= -1; 
                 });
+
+                // 下への移動は、一定間隔が経過した場合のみ実行
+                if (timestamp - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
+                    invaders.forEach(invader => {
+                        invader.y += INVADER_MOVE_DOWN_AMOUNT; // Move down
+                    });
+                    lastInvaderMoveDownTime = timestamp; // タイムスタンプを更新
+                }
             }
 
             // Invader shooting
@@ -756,7 +771,7 @@
 
             // Update boss movement (if exists)
             if (boss) {
-                boss.x += boss.dx;
+                boss.x += boss.dx * deltaTime; // ★変更: deltaTimeを掛けて速度を調整
                 if (boss.x + boss.width > GAME_WIDTH) {
                     boss.x = GAME_WIDTH - boss.width;
                     boss.dx *= -1;
