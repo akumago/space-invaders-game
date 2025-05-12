@@ -269,7 +269,7 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_SPEED = 1;
+        const INVADER_SPEED = 0.8; // ★変更: インベーダーの横移動速度を少し遅くしました
         const INVADER_PROJECTILE_SPEED = 5;
         const INVADER_ROWS = 5;
         const INVADER_COLS = 8;
@@ -547,8 +547,12 @@
 
         function createInvaders() {
             invaders = [];
-            const startX = (GAME_WIDTH - (INVADER_COLS * (INVADER_WIDTH + INVADER_SPACING) - INVADER_SPACING)) / 2;
-            const startY = 80; // インベーダーの初期Y座標を高く保つ
+            // ★変更: INVADER_COLS * (INVADER_WIDTH + INVADER_SPACING) の計算結果が偶数にならないと、
+            // GAME_WIDTHから引いたときに小数点が出て、それがinvader.xに影響する可能性があるので、
+            // 厳密に中央に配置されるよう調整
+            const totalInvaderWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING);
+            const startX = (GAME_WIDTH - totalInvaderWidth) / 2;
+            const startY = 80; // インベーダーの初期Y座標は高く保つ
 
             for (let row = 0; row < INVADER_ROWS; row++) {
                 for (let col = 0; col < INVADER_COLS; col++) {
@@ -557,7 +561,7 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        dx: INVADER_SPEED + (currentLevel - 1) * 0.5,
+                        dx: INVADER_SPEED + (currentLevel - 1) * 0.1, // ★変更: レベルアップでの速度増加を緩やかに
                         hp: 1
                     });
                 }
@@ -573,7 +577,7 @@
                 y: 30,
                 width: 100,
                 height: 80,
-                dx: (INVADER_SPEED + (currentLevel - 1) * 0.5) * 1.5,
+                dx: (INVADER_SPEED + (currentLevel - 1) * 0.1) * 1.5,
                 hp: BOSS_HP_PER_LEVEL * currentLevel,
                 shootTimer: 0,
                 shootInterval: Math.max(30, 60 - (currentLevel - 1) * 10)
@@ -721,14 +725,20 @@
             let hitEdge = false;
             invaders.forEach(invader => {
                 invader.x += invader.dx;
-                if (invader.x + invader.width > GAME_WIDTH || invader.x < 0) {
+                // ★変更: 端に到達した際に、少しだけX座標を戻して、すぐに反転させ、
+                // 次のフレームでまた端に到達するのを防ぐ
+                if (invader.x + invader.width > GAME_WIDTH) {
+                    invader.x = GAME_WIDTH - invader.width; // 画面内に収める
+                    hitEdge = true;
+                } else if (invader.x < 0) {
+                    invader.x = 0; // 画面内に収める
                     hitEdge = true;
                 }
             });
 
             if (hitEdge) {
                 invaders.forEach(invader => {
-                    invader.dx *= -1;
+                    invader.dx *= -1; // Reverse direction
                     invader.y += 20; // Move down
                 });
             }
@@ -747,7 +757,11 @@
             // Update boss movement (if exists)
             if (boss) {
                 boss.x += boss.dx;
-                if (boss.x + boss.width > GAME_WIDTH || boss.x < 0) {
+                if (boss.x + boss.width > GAME_WIDTH) {
+                    boss.x = GAME_WIDTH - boss.width;
+                    boss.dx *= -1;
+                } else if (boss.x < 0) {
+                    boss.x = 0;
                     boss.dx *= -1;
                 }
 
@@ -846,7 +860,6 @@
             }
 
             // Check if invaders reached bottom
-            // ★デバッグ用ログ: ゲームオーバー判定直前のY座標
             const lowestInvaderCurrent = invaders.length > 0 ? invaders.reduce((prev, current) => (prev.y + prev.height > current.y + current.height) ? prev : current) : null;
             if (lowestInvaderCurrent) {
                 console.log(`[DEBUG] Current lowest invader bottom edge: ${lowestInvaderCurrent.y + lowestInvaderCurrent.height}, Player top edge: ${player.y}`);
