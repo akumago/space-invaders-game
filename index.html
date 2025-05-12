@@ -278,9 +278,9 @@
         const INVADER_SPACING = 40;
         const BOSS_HP_PER_LEVEL = 5; // ボスのHPはレベルごとに増加
         const MAX_LEVELS = 5; // 最大レベル数
-        const PLAYER_WIDTH = 40; // プレイヤーの幅（画像に合わせて調整）
-        const PLAYER_HEIGHT = 30; // プレイヤーの高さ（画像に合わせて調整）
-        const PLAYER_SHOOT_COOLDOWN_MAX = 20; // frames between shots for player
+        const PLAYER_WIDTH = 30; // ★調整: invader3.pngのサイズに合わせて調整してください。
+        const PLAYER_HEIGHT = 30; // ★調整: invader3.pngのサイズに合わせて調整してください。
+        const PLAYER_SHOOT_COOLDOWN_MAX = 15; // 発射間隔を少し短縮
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -338,10 +338,10 @@
                 const savedVolume = parseFloat(localStorage.getItem('gameVolume')) || 0.5;
                 Howler.volume(savedVolume);
                 volumeSlider.value = savedVolume;
-                if (backgroundVideo) { // 初期ロード時に動画の音量も同期
-                    backgroundVideo.volume = savedVolume;
-                    backgroundVideo.muted = false; // JSでミュート解除。HTMLのmuted属性より優先
-                    backgroundVideo.play().catch(e => console.error("Initial video playback error:", e));
+                // backgroundVideoの音量はHTMLのmuted属性が優先されるため、
+                // JavaScript側では初期設定時にミュート解除しない
+                if (backgroundVideo) {
+                    backgroundVideo.volume = savedVolume; // 動画の音量も同期
                 }
 
                 volumeSlider.addEventListener('input', (e) => {
@@ -358,13 +358,21 @@
                         } else if (newVolume === 0 && !backgroundVideo.muted) {
                             backgroundVideo.muted = true;
                         }
-                        backgroundVideo.play().catch(e => console.error("Video play error after volume change:", e)); // 再生を試みる
+                        // play()はユーザー操作後に初めて成功するため、ここでのplay()はエラーになる可能性あり
+                        // ただし、一度再生が開始されれば音量変更はリアルタイムに反映されるはず
+                        // backgroundVideo.play().catch(e => console.error("Video play error after volume change:", e));
                     }
                 });
 
                 // スタートボタンのクリックイベントリスナー
                 startButton.addEventListener('click', () => {
                     if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
+                        // ユーザー操作による再生をトリガー
+                        if (backgroundVideo) {
+                            backgroundVideo.muted = false; // ここでミュートを解除
+                            backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
+                            backgroundVideo.play().catch(e => console.error("Video playback error on start button click:", e));
+                        }
                         startGame(true); // 新しいゲームを開始
                     }
                 });
@@ -398,8 +406,9 @@
             // 初期状態（ロード完了時）では動画が表示されている状態にする
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 最初は隠す
-                backgroundVideo.muted = true; // 自動再生のために最初はミュート必須
-                backgroundVideo.volume = 0; // 初期音量も0
+                // HTML側で muted playsinline が設定されているはずなので、ここでは強制しない
+                // backgroundVideo.muted = true;
+                // backgroundVideo.volume = 0;
             }
 
             // 初期状態ではHowler.jsのBGMを停止しておく (スタート画面では動画の音が鳴るため)
@@ -448,7 +457,7 @@
             showLoadingMessage();
             const imagePromises = [
                 // プレイヤーの画像: あなたの 'invader3.png' を使用します
-                loadImage('player', 'image/invader3.png'),  // ★修正箇所★
+                loadImage('player', 'image/invader3.png'),  // ★変更箇所★
 
                 // インベーダーの画像: あなたの 'invader1.png' を使用します
                 loadImage('invader', 'image/invader1.png'), 
@@ -552,9 +561,9 @@
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'block'; // Show video on start screen
                 backgroundVideo.currentTime = 0; // Reset video
-                backgroundVideo.muted = false; // Ensure video can play sound if volume is up
+                // backgroundVideo.muted = false; // 自動再生を考慮して、ここではミュート解除せず、ボタンクリック時に行う
                 backgroundVideo.volume = Howler.volume(); // Sync video volume with slider
-                backgroundVideo.play().catch(e => console.error("Video play error on start screen:", e));
+                // backgroundVideo.play().catch(e => console.error("Video play error on start screen:", e)); // 自動再生ポリシーでブロックされるため削除
             }
             currentGameState = GAME_STATE.START_SCREEN; // Ensure correct state
         }
@@ -595,7 +604,7 @@
         function createInvaders() {
             invaders = [];
             const startX = (GAME_WIDTH - (INVADER_COLS * (INVADER_WIDTH + INVADER_SPACING) - INVADER_SPACING)) / 2;
-            const startY = 50; // 少し上から開始
+            const startY = 80; // ★調整: インベーダーの初期Y座標を高くする
 
             for (let row = 0; row < INVADER_ROWS; row++) {
                 for (let col = 0; col < INVADER_COLS; col++) {
@@ -687,20 +696,17 @@
             }
 
             // ゲームオーバーまたは全レベルクリア時、スタート画面に戻る
-            if (!win || currentLevel >= MAX_LEVELS) {
-                if (backgroundVideo) {
-                    backgroundVideo.style.display = 'block'; // 動画を再表示する
-                    backgroundVideo.muted = false; // ミュートを解除
-                    backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                    backgroundVideo.play().catch(e => console.error("Video playback error on game over:", e)); // 再生開始
-                    backgroundVideo.style.zIndex = 0;
-                }
-                canvas.style.display = 'none'; // キャンバスを非表示に戻す
-                showStartButton(); // スタートボタンを再表示し、初期状態に戻す
-            } else {
-                // レベルクリアで次のレベルへ進む場合: BGMは継続 (すでに停止済みなら再開はしない)。背景動画は非表示のまま
-                // canvas.style.displayは'block'のまま
+            // スタートボタンを再表示し、初期状態に戻す
+            if (backgroundVideo) {
+                backgroundVideo.style.display = 'block'; // 動画を再表示する
+                backgroundVideo.currentTime = 0; // 動画を最初に戻す
+                backgroundVideo.muted = false; // ミュートを解除 (ボタンクリックでplayされるように)
+                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
+                backgroundVideo.play().catch(e => console.error("Video playback error on game over:", e)); // 再生開始
+                backgroundVideo.style.zIndex = 0;
             }
+            canvas.style.display = 'none'; // キャンバスを非表示に戻す
+            showStartButton(); // スタートボタンを再表示
 
             let message = '';
             const playAgainButton = messageBox.querySelector('button');
@@ -908,6 +914,7 @@
             }
 
             // Check if invaders reached bottom
+            // プレイヤーのY座標とインベーダーの高さ+Y座標を比較
             if (invaders.some(invader => invader.y + invader.height > player.y)) {
                 endGame(false); // Invaders reached player
                 return; // Stop updating
@@ -1022,9 +1029,8 @@
                 isPointerDown = true;
                 shootProjectile(); // Shoot on touch down
             } else if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
-                // Allow interaction with start/restart button if not playing
-                // This click handler is already on the button directly.
-                // No need to trigger it from body touch start.
+                // スタートボタンのクリックイベントはボタン自身で処理するため、ここでは何もしない
+                // タップで即ゲーム開始を防ぐ
             }
         }
 
@@ -1056,7 +1062,7 @@
                 isPointerDown = true;
                 shootProjectile(); // Shoot on mouse down
             } else if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
-                // Allow interaction with start/restart button if not playing
+                // スタートボタンのクリックイベントはボタン自身で処理するため、ここでは何もしない
             }
         }
 
