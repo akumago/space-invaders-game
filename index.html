@@ -183,19 +183,19 @@
   let imagesLoadedCount = 0;
   // ここを修正しました！
   const ASSET_PATHS = {
-    invader: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8822%E6%97%A5%2020_47_30%20(1).png',
-    boss: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/ChatGPT%20Image%202025%E5%B9%B44%E6%9C%8824%E6%97%A5%2017_31_43%20(1).png',
-    player: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/camera_biz.png'
+    invader: 'invader1.png', // 修正済み
+    boss: 'invader2.png', // 修正済み
+    player: 'camera_biz.png' // 変更なし
   };
   let loadedImages = {}; // Stores actual Image objects after loading
 
   // Audio Loading Variables
   let audiosLoadedCount = 0; // 新しく追加
   const AUDIO_PATHS = {
-    backgroundMusic: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/(A%E3%83%A1%E3%83%AD1).mp3',
+    backgroundMusic: 'bgm_amelo1.mp3', // 修正済み
     // 他のサウンドエフェクトがあればここに追加します。例:
-    // playerShoot: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/sounds/player_shoot.mp3',
-    // invaderHit: 'https://raw.githubusercontent.com/akumago/space-invaders-game/main/sounds/invader_hit.mp3',
+    // playerShoot: 'sounds/player_shoot.mp3',
+    // invaderHit: 'sounds/invader_hit.mp3',
   };
   let loadedAudio = {}; // Stores actual Howl objects after loading
 
@@ -688,7 +688,7 @@
 
     // Level completion condition (Boss defeated)
     if (boss?.alive === false) { // If boss is defeated (and exists)
-        if (currentLevel < MAX_LEVELs) {
+        if (currentLevel < MAX_LEVELS) {
             endGame(true); // Win current level, prompt for next level
         } else {
             endGame(true); // True win, all levels cleared
