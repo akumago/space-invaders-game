@@ -1,171 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Space Invaders Improved</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background-color: #333; /* Darker background for better contrast */
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      font-family: sans-serif;
-      color: white;
-    }
-    #gameContainer {
-      position: relative;
-      /* width: 100%;  <-- この行を削除しました */
-      /* 修正: 画面の幅と高さに対して最大サイズを設定 */
-      max-width: 90vw; /* ビューポート幅の90%まで拡大 */
-      max-height: 90vh; /* ビューポート高さの90%まで拡大 */
-      aspect-ratio: 9 / 19.5; /* アスペクト比を維持 */
-      background-color: lightgray; /* 変更点: ゲームの背景色をライトグレーに */
-      overflow: hidden;
-      border: 2px solid #fff; /* Border for game area */
-      box-sizing: border-box; /* Include padding and border in the element's total width and height */
-      /* デバッグ用に境界線を追加: */
-      /* border: 2px solid red; */
-    }
-    #gameCanvas {
-      width: 100%;
-      height: 100%;
-      background-color: transparent; /* Canvas background is transparent to show gameContainer background */
-      /* デバッグ用に境界線を追加: */
-      /* border: 2px solid blue; */
-    }
-    #score, #lives, #level {
-      position: absolute;
-      top: 10px;
-      font-size: 16px;
-      color: #fff; /* Score/Lives text color */
-      z-index: 10; /* Ensure text is above canvas */
-    }
-    #score { left: 10px; }
-    #lives { right: 10px; }
-    #level { left: 50%; transform: translateX(-50%); } /* Center the level display */
-
-    #messageBox {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      background-color: rgba(0, 0, 0, 0.9);
-      padding: 20px;
-      border-radius: 8px;
-      text-align: center;
-      display: none;
-      z-index: 20; /* Ensure message box is above everything */
-    }
-    #messageBox h2 {
-      margin-top: 0;
-      color: #eee;
-    }
-    #messageBox button {
-      background-color: #4CAF50; /* Greenish button */
-      color: white;
-      border: none;
-      padding: 12px 25px;
-      border-radius: 5px;
-      cursor: pointer;
-      font-size: 18px;
-      margin-top: 15px;
-      transition: background-color 0.3s ease;
-    }
-    #messageBox button:hover {
-      background-color: #45a049;
-    }
-    #loadingMessage {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      color: white;
-      font-size: 24px;
-      display: none; /* Initially hidden */
-      z-index: 30;
-    }
-    /* ボリュームスライダーの基本的なスタイル調整 */
-    #volumeSlider {
-        -webkit-appearance: none; /* Safariなどのデフォルトスタイルをリセット */
-        appearance: none;
-        width: 150px;
-        height: 8px;
-        background: #d3d3d3;
-        outline: none;
-        opacity: 0.7;
-        transition: opacity .2s;
-        border-radius: 4px;
-    }
-    #volumeSlider:hover {
-        opacity: 1;
-    }
-    #volumeSlider::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #4CAF50;
-        cursor: pointer;
-    }
-    #volumeSlider::-moz-range-thumb {
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        background: #4CAF50;
-        cursor: pointer;
-    }
-  </style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
-</head>
-<body>
-<div id="gameContainer">
-  <canvas id="gameCanvas"></canvas>
-  <div id="score">Score: 0</div>
-  <div id="lives">Lives: 3</div>
-  <div id="level">Level: 1</div>
-  <div id="messageBox">
-    <h2 id="message"></h2>
-    <button onclick="startGame(true)">Play Again</button>
-  </div>
-  <div id="loadingMessage">Loading...</div> 
-
-  <div id="startButtonContainer" style="
-    position: absolute;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    color: white;
-    font-size: 20px;
-    z-index: 40; /* loadingMessageより上に */
-  ">
-    <h1>SPACE INVADERS</h1>
-    <p>Improved</p>
-    <button id="startButton" style="
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 15px 30px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 24px;
-      margin-top: 30px;
-      transition: background-color 0.3s ease;
-    ">
-      TAP TO START
-    </button>
-    <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
-      <span>Volume</span>
-      <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
-    </div>
-  </div>
-</div>
-
 <script>
   // --- Constants ---
   const GAME_WIDTH = 420;
@@ -497,7 +329,6 @@
       currentLevel = 1; // Reset level only for a new game
     } else {
       // For level progression, keep score and lives, but reset other game elements
-      // Player position, invincibility etc. also reset implicitly when game elements are recreated.
       player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
       player.movingLeft = false;
       player.movingRight = false;
@@ -520,14 +351,18 @@
     currentGameState = GAME_STATE.PLAYING;
     lastTimestamp = performance.now();
 
-    // BGMの再生 (新しく追加)
+    // BGMの再生
     if (loadedAudio.backgroundMusic) {
-      // 新しいゲームの場合 (isNewGame が true) 、またはBGMが現在再生中でない場合のみ停止して再生する
-      if (isNewGame || !loadedAudio.backgroundMusic.playing()) {
+      console.log("startGame - BGMチェック。isNewGame:", isNewGame); // デバッグ用
+      if (isNewGame) { // 新しいゲームの場合のみBGMを停止して再生する
+        console.log("startGame - 新しいゲームなのでBGMを最初から再生します。"); // デバッグ用
         loadedAudio.backgroundMusic.stop(); // 既に再生中であれば停止
         loadedAudio.backgroundMusic.play();
         loadedAudio.backgroundMusic.loop(true); // ループ再生
         loadedAudio.backgroundMusic.volume(Howler.volume()); // グローバル音量設定に従う
+      } else {
+        console.log("startGame - レベル移行なのでBGMは継続します（endGameで停止されていない場合）。"); // デバッグ用
+        // ここではBGMの操作は不要。endGameで停止されていない限り、BGMはそのまま再生され続けます。
       }
     }
 
@@ -541,36 +376,39 @@
       animationFrameId = null;
     }
 
-    // BGMの停止 (新しく追加)
+    // BGMの停止
     if (loadedAudio.backgroundMusic) {
-      loadedAudio.backgroundMusic.stop();
+      // 勝利（win === true）かつ、まだ最終レベルではない場合（currentLevel < MAX_LEVELS）はBGMを停止しない
+      // それ以外の場合（ゲームオーバー、または最終レベルをクリア）はBGMを停止する
+      if (!win || currentLevel >= MAX_LEVELS) {
+        console.log("endGame - BGMを停止します（ゲームオーバーまたは全レベルクリア）。"); // デバッグ用
+        loadedAudio.backgroundMusic.stop();
+      } else {
+        console.log("endGame - レベルクリア、BGMは継続します。"); // デバッグ用
+      }
     }
 
-    // キャンバスをクリアし、背景色で塗りつぶす
-    ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // キャンバス全体をクリア
-    ctx.fillStyle = 'lightgray'; // スタイルシートの #gameContainer の背景色と合わせる
-    ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // クリアしたキャンバスを背景色で塗りつぶす
-
     let message = '';
-    const playAgainButton = messageBox.querySelector('button'); // Get the button reference
+    const playAgainButton = messageBox.querySelector('button');
 
     if (win) {
       if (currentLevel >= MAX_LEVELS) {
-        message = `You Win! Final Score: ${score}`; // Display final score
+        message = `You Win! Final Score: ${score}`;
         playAgainButton.innerText = "Play Again";
-        playAgainButton.onclick = () => startGame(true); // Start a new game from level 1
+        playAgainButton.onclick = () => startGame(true);
       } else {
-        message = `Level ${currentLevel} Clear! Score: ${score}`; // Display current score
+        message = `Level ${currentLevel} Clear! Score: ${score}`;
         playAgainButton.innerText = "Next Level";
         playAgainButton.onclick = () => {
-            currentLevel++; // Increment level
-            startGame(false); // Start next level (not a new game)
+            currentLevel++;
+            // hideMessageBox(); // 必要であればここで非表示にしても良いですが、startGameで非表示にするのが一般的です
+            startGame(false); // 次のレベルを開始（新しいゲームではない）
         };
       }
     } else { // Game Over
-      message = `Game Over! Final Score: ${score}`; // Display final score
+      message = `Game Over! Final Score: ${score}`;
       playAgainButton.innerText = "Play Again";
-      playAgainButton.onclick = () => startGame(true); // Start a new game from level 1
+      playAgainButton.onclick = () => startGame(true);
     }
 
     messageText.innerText = message;
@@ -980,5 +818,3 @@
     init(); // Start the asset loading process
   };
 </script>
-</body>
-</html>
