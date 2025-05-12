@@ -271,14 +271,17 @@
         const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
         const ENEMY_PROJECTILE_SPEED = 4; // インベーダーとボスの弾の速度 (旧 INVADER_PROJECTILE_SPEED)
-        const INVADER_ROWS = 5; // ★修正: 3から5に戻す（敵の行数）
-        const INVADER_COLS = 6; // ★修正: 7から6に減少（敵の列数）
-        const INVADER_WIDTH = 55; // ★修正: 45から55に増加（敵の表示サイズ）
-        const INVADER_HEIGHT = 55; // ★修正: 45から55に増加（敵の表示サイズ）
+
+        const INVADER_ROWS = 6; // ★修正: 5から6に増加（敵の行数）
+        const INVADER_COLS = 5; // ★修正: 6から5に減少（敵の列数）
+        const INVADER_WIDTH = 75; // ★修正: 55から75に増加（敵の表示サイズ）
+        const INVADER_HEIGHT = 75; // ★修正: 55から75に増加（敵の表示サイズ）
+        
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
-        const BOSS_HP_PER_LEVEL = 7; // ボスのHPを定数BOSS_HP_PER_LEVELで固定
+        
+        const BOSS_HP_PER_LEVEL = 10; // ★修正: 7から10に増加（ボスのHP）
         const MAX_LEVELS = 10; // 最大レベル数を10に設定
         const PLAYER_WIDTH = 40; // 修正: 30から40に増加（自機の表示サイズ）
         const PLAYER_HEIGHT = 40; // 修正: 30から40に増加（自機の表示サイズ）
@@ -607,7 +610,7 @@
                 hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
                 shootTimer: 0,
                 // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
-                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15) // ★修正: 最初の難易度を下げた
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15)
             };
         }
 
