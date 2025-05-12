@@ -423,9 +423,10 @@
                 backgroundVideo.muted = true; // 最初はミュートにする
             }
 
-            if (loadedAudio.backgroundMusic) {
-                loadedAudio.backgroundMusic.stop();
-            }
+            // ★修正：Howler.jsの背景音楽はここで停止せず、startGameで制御する
+            // if (loadedAudio.backgroundMusic) {
+            //     loadedAudio.backgroundMusic.stop();
+            // }
 
             player = {
                 x: GAME_WIDTH / 2 - PLAYER_WIDTH / 2,
@@ -661,12 +662,13 @@
             currentGameState = GAME_STATE.PLAYING;
             lastTimestamp = performance.now();
 
-            if (loadedAudio.backgroundMusic) {
-                loadedAudio.backgroundMusic.stop();
+            // ★修正：音楽が既に再生中でなければ再生開始、ループを設定
+            if (loadedAudio.backgroundMusic && !loadedAudio.backgroundMusic.playing()) {
                 loadedAudio.backgroundMusic.play();
-                loadedAudio.backgroundMusic.loop(true);
+                loadedAudio.backgroundMusic.loop(true); // ループを有効にする
                 loadedAudio.backgroundMusic.volume(Howler.volume());
             }
+
 
             animationFrameId = requestAnimationFrame(update);
 
@@ -680,9 +682,13 @@
                 animationFrameId = null;
             }
 
-            if (loadedAudio.backgroundMusic) {
-                loadedAudio.backgroundMusic.stop();
+            // ★修正：ゲームオーバー（敗北）の場合のみBGMを停止
+            if (!win) {
+                if (loadedAudio.backgroundMusic) {
+                    loadedAudio.backgroundMusic.stop();
+                }
             }
+
 
             // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
             if (backgroundVideo) {
@@ -714,6 +720,10 @@
                         backgroundVideo.style.zIndex = -1;
                     }
                     canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+                    // ★最終クリア時もBGMは停止
+                    if (loadedAudio.backgroundMusic) {
+                        loadedAudio.backgroundMusic.stop();
+                    }
                 } else {
                     // 中間レベルをクリアした場合
                     message = `Level ${currentLevel} Clear! Score: ${score}`;
@@ -726,6 +736,7 @@
                     };
                     // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
                     canvas.style.display = 'block'; // キャンバスは表示したまま
+                    // ★中間レベルクリア時はBGMは停止しない（継続再生）
                 }
             } else {
                 // ゲームオーバー（敗北）の場合
@@ -745,6 +756,7 @@
                     backgroundVideo.style.zIndex = -1;
                 }
                 canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+                // ★ゲームオーバー時はBGM停止（上記で処理済み）
             }
             showMessage(message);
         }
