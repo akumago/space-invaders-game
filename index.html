@@ -25,21 +25,47 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh; /* 画面全体の高さ */
+            /* ★修正: 動的ビューポート高さを考慮し、タブバーなどで隠れる部分を考慮 */
+            min-height: 100dvh; /* dvhが未対応のブラウザ向けにvhも記載 */
+            min-height: 100vh;
             width: 100vw; /* 画面全体の幅 */
             position: relative; /* 子要素の絶対配置の基準 */
+            overflow: hidden; /* ★追加: 画面外へのコンテンツのはみ出しを隠す */
+            /* ★追加: iOSのノッチやホームバーなどのセーフエリアインセットを考慮 */
+            padding-top: env(safe-area-inset-top, 0);
+            padding-right: env(safe-area-inset-right, 0);
+            padding-bottom: env(safe-area-inset-bottom, 0);
+            padding-left: env(safe-area-inset-left, 0);
         }
 
         /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */
         #gameContainer {
             position: relative; /* 子要素（canvas, video）の基準 */
-            width: 420px; /* GAME_WIDTHと同期 */
-            height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
             overflow: hidden; /* はみ出たコンテンツを隠す */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
             z-index: 1; /* 他のUIより手前 */
             margin: auto; /* 画面中央に配置 */
+
+            /* ★修正: 固定ピクセル値からビューポートベースの柔軟なサイズ指定に変更 */
+            /* ゲームのアスペクト比を常に維持 (幅:高さ = 9:19.5) */
+            aspect-ratio: 9 / 19.5; 
+            
+            /* 画面高さの95%に制限し、ブラウザのUI（タブバーなど）のための余白を確保 */
+            max-height: 95dvh; /* dvhが未対応のブラウザ向けにvhも記載 */
+            max-height: 95vh;
+            /* 高さに合わせて幅も制限し、ゲームが画面幅から飛び出さないようにする */
+            max-width: calc(95dvh * (9 / 19.5)); /* dvhが未対応のブラウザ向けにvhも記載 */
+            max-width: calc(95vh * (9 / 19.5));
+
+            /* widthとheightはautoにして、max-height/max-widthとaspect-ratioによって決定させる */
+            width: auto;
+            height: auto;
+
+            /* フォールバックとして、もしこれらのプロパティがサポートされない場合のための固定サイズ */
+            /* これは上記の設定で自動的に上書きされるため、基本的には無視されますが、念のため残します */
+            /* width: 420px; */
+            /* height: calc(420px * (19.5 / 9)); */
         }
 
         /* ゲームキャンバス */
@@ -47,30 +73,16 @@
             position: absolute; /* gameContainerを基準に配置 */
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100%; /* 親要素の幅に合わせる */
+            height: 100%; /* 親要素の高さに合わせる */
             display: block; /* 初期状態はJSで制御 */
             z-index: 0; /* 動画より手前 */
             background-color: lightgray; /* ゲームプレイ中の背景色をライトグレーに設定 */
         }
 
-        /* 背景動画 - gameContainerのサイズに合わせる */
-        #background-video {
-            position: absolute; /* gameContainerを基準に配置 */
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 縦横比を維持しつつ要素を覆う */
-            filter: brightness(0.5); /* 少し暗くして見やすくする */
-            z-index: -1; /* キャンバスより奥に配置 */
-            display: block; /* 初期状態はJSで制御 */
-        }
-
         /* スコア、ライフ、レベル表示 */
         #score, #lives, #level {
             position: absolute;
-            font-size: 1.2em;
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
@@ -78,6 +90,8 @@
             padding: 5px 10px;
             background-color: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
+            /* ★修正: ゲーム画面のサイズに合わせてフォントサイズを調整 */
+            font-size: 3vw; /* 画面幅の3%くらいに調整 */
         }
         #score { top: 10px; left: 10px; }
         #lives { top: 10px; right: 10px; }
@@ -289,6 +303,10 @@
         const PLAYER_HEIGHT = 40; // 修正: 30から40に増加（自機の表示サイズ）
         const PLAYER_SHOOT_COOLDOWN_MAX = 15; // 修正: 20から15に減少（自機の発射間隔）
 
+        // ★修正: 自機のミサイルサイズを大きくして視認性を向上
+        const PLAYER_PROJECTILE_WIDTH = 10; 
+        const PLAYER_PROJECTILE_HEIGHT = 20;
+
         // ボスの放射状ミサイル関連の定数
         const BOSS_RADIAL_PROJECTILE_COUNT_BASE = 3; // ボスの初期放射状ミサイル数
         const BOSS_RADIAL_SPREAD_ANGLE = Math.PI * 0.75; // 放射状に広がる角度（ラジアン、例: 135度）
@@ -343,6 +361,9 @@
 
         let isInitialStartTapDone = false; // 最初のタップ（動画再生）が完了したかどうかのフラグ
 
+        // ★追加: メッセージボックスのボタンのイベントリスナー管理用
+        let currentPlayAgainHandler = null; 
+
         // --- Initialization ---
 
         function init() {
@@ -362,13 +383,13 @@
                     Howler.volume(newVolume); // Howler.jsのグローバル音量を更新
                     localStorage.setItem('gameVolume', newVolume); // 音量設定をローカルストレージに保存
 
-                    if (backgroundVideo) {
+                    if (newVolume > 0 && backgroundVideo.muted) { // 音量0から増やした場合にミュート解除
+                        backgroundVideo.muted = false;
+                    } else if (newVolume === 0 && !backgroundVideo.muted) { // 音量0にした場合にミュート
+                        backgroundVideo.muted = true;
+                    }
+                    if (backgroundVideo) { // ここでbackgroundVideo.volumeを設定するように変更
                         backgroundVideo.volume = newVolume;
-                        if (newVolume > 0 && backgroundVideo.muted) {
-                            backgroundVideo.muted = false;
-                        } else if (newVolume === 0 && !backgroundVideo.muted) {
-                            backgroundVideo.muted = true;
-                        }
                     }
                 });
 
@@ -390,10 +411,10 @@
                         if (!isInitialStartTapDone) {
                             // 1回目のタップ：動画再生とボタンテキスト変更
                             if (backgroundVideo) {
-                                backgroundVideo.muted = false; // ミュート解除
-                                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                                backgroundVideo.play().catch(e => console.error("Video playback error on first tap:", e));
-                                backgroundVideo.style.display = 'block'; // 動画を表示
+                                // ★修正: ユーザー操作で動画のミュート解除と再生
+                                backgroundVideo.muted = false; 
+                                backgroundVideo.volume = Howler.volume(); 
+                                backgroundVideo.play().catch(err => console.error("Video playback error on first tap:", err));
                             }
                             startButton.innerText = "START GAME"; // ボタンのテキストを変更
                             isInitialStartTapDone = true; // フラグを立てる
@@ -432,13 +453,8 @@
             backgroundVideo = document.getElementById('background-video');
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 最初は隠す
-                backgroundVideo.muted = true; // 最初はミュートにする
+                backgroundVideo.muted = true; // 最初はミュートにする（HTML側にもmuted属性があるべき）
             }
-
-            // ★修正：Howler.jsの背景音楽はここで停止せず、startGameで制御する
-            // if (loadedAudio.backgroundMusic) {
-            //     loadedAudio.backgroundMusic.stop();
-            // }
 
             player = {
                 x: GAME_WIDTH / 2 - PLAYER_WIDTH / 2,
@@ -546,12 +562,10 @@
             canvas.style.display = 'none';
 
             if (backgroundVideo) {
-                // スタート画面では動画を表示
+                // ★修正: スタート画面では動画を表示するだけ。再生やミュート解除はユーザー操作で行う
                 backgroundVideo.style.display = 'block';
                 backgroundVideo.currentTime = 0; // 動画を最初から再生
-                backgroundVideo.muted = false; // 再生時のみミュートを解除
-                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                backgroundVideo.play().catch(e => console.error("Video playback error on start screen:", e));
+                backgroundVideo.muted = true; // ★ここを「true」に固定（自動再生のために重要）
                 backgroundVideo.style.zIndex = -1; // キャンバスより奥に
             }
 
@@ -592,6 +606,38 @@
         function updateLevelDisplay() {
             levelDisplay.innerText = `Level: ${currentLevel}`;
         }
+
+        // ★追加: メッセージボックスのボタンにイベントリスナーを割り当てる関数
+        function assignPlayAgainButtonHandler(actionType) {
+            const playAgainButton = messageBox.querySelector('button');
+
+            // 既存のリスナーがあれば削除して、複数回アタッチされるのを防ぐ
+            if (currentPlayAgainHandler) {
+                playAgainButton.removeEventListener('touchstart', currentPlayAgainHandler);
+                playAgainButton.removeEventListener('mousedown', currentPlayAgainHandler);
+            }
+
+            let newHandler;
+            if (actionType === 'showStartScreen') {
+                newHandler = function(e) {
+                    e.preventDefault(); // デフォルトの動作を抑制
+                    hideMessageBox();
+                    showStartButton();
+                };
+            } else if (actionType === 'startGameNextLevel') {
+                newHandler = function(e) {
+                    e.preventDefault(); // デフォルトの動作を抑制
+                    hideMessageBox();
+                    startGame(false); // 現在のスコア・ライフを維持して次のレベルへ
+                };
+            }
+
+            // 新しいリスナーを追加
+            playAgainButton.addEventListener('touchstart', newHandler, { passive: false });
+            playAgainButton.addEventListener('mousedown', newHandler);
+            currentPlayAgainHandler = newHandler; // 新しいハンドラを保存
+        }
+
 
         // --- Game State Management ---
 
@@ -718,10 +764,9 @@
                     // 最終レベルをクリアした場合
                     message = `You Win! Final Score: ${score}`;
                     playAgainButton.innerText = "Play Again";
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                    };
+                    // ★修正: assignPlayAgainButtonHandler を使用
+                    assignPlayAgainButtonHandler('showStartScreen');
+                    
                     // 最終クリアまたはゲームオーバー時は背景動画を再表示
                     if (backgroundVideo) {
                         backgroundVideo.style.display = 'block';
@@ -741,11 +786,9 @@
                     message = `Level ${currentLevel} Clear! Score: ${score}`;
                     currentLevel++; // 次のレベルへ進む
                     playAgainButton.innerText = `Next Level (${currentLevel})`;
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        // 次のレベルへ直接移行し、最初のスタート画面に戻らない
-                        startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
-                    };
+                    // ★修正: assignPlayAgainButtonHandler を使用
+                    assignPlayAgainHandler('startGameNextLevel');
+                    
                     // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
                     canvas.style.display = 'block'; // キャンバスは表示したまま
                     // ★中間レベルクリア時はBGMは停止しない（継続再生）
@@ -754,10 +797,9 @@
                 // ゲームオーバー（敗北）の場合
                 message = `Game Over! Score: ${score}`;
                 playAgainButton.innerText = "Play Again";
-                playAgainButton.onclick = () => {
-                    hideMessageBox();
-                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                };
+                // ★修正: assignPlayAgainButtonHandler を使用
+                assignPlayAgainHandler('showStartScreen');
+                
                 // 最終クリアまたはゲームオーバー時は背景動画を再表示
                 if (backgroundVideo) {
                     backgroundVideo.style.display = 'block';
@@ -982,7 +1024,7 @@
                 if (!player.invincible &&
                     p.x < player.x + player.width &&
                     p.x + p.width > player.x &&
-                    p.y < player.y + player.height &&
+                    p.y < player.y + p.height && // ★修正: p.height を使用
                     p.y + p.height > player.y
                 ) {
                     lives--;
@@ -1158,10 +1200,10 @@
         function shootProjectile() {
             if (playerShootCooldown <= 0) {
                 projectiles.push({
-                    x: player.x + player.width / 2 - 2,
+                    x: player.x + player.width / 2 - PLAYER_PROJECTILE_WIDTH / 2,
                     y: player.y,
-                    width: 4,
-                    height: 10
+                    width: PLAYER_PROJECTILE_WIDTH,
+                    height: PLAYER_PROJECTILE_HEIGHT
                 });
                 playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
             }
