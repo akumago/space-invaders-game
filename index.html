@@ -462,7 +462,7 @@
 
             // Touch event listeners for mobile
             document.body.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.body.addEventListener('touchmove', handleTouchMove, { passive: false });
+            document.body.addEventListener('touchmove', handleTouchMove, { passive: false }); // <--- ここに修正が入ります
             document.body.addEventListener('touchend', handleTouchEnd);
 
             // Mouse event listeners for desktop
@@ -804,6 +804,7 @@
                         player.x += PLAYER_SPEED;
                     }
                 }
+                // 自機が画面外に出ないようにクランプ
                 player.x = Math.max(0, Math.min(player.x, GAME_WIDTH - player.width));
             }
 
@@ -855,17 +856,20 @@
                 });
 
                 // 下への移動は、一定間隔が経過した場合のみ実行
-                if (timestamp - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
-                    invaders.forEach(invader => {
-                        invader.y += INVADER_MOVE_DOWN_AMOUNT; // Move down
-                        // ゲームオーバー判定
-                        if (invader.y + invader.height > player.y) {
-                            endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
-                        }
-                    });
-                    lastInvaderMoveDownTime = timestamp; // 移動時間をリセット
+                // ここで timestamp を使うのは、フレームレートに依存せず正確な時間で移動させるため
+                const currentTime = performance.now();
+                if (currentTime - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
+                     invaders.forEach(invader => {
+                         invader.y += INVADER_MOVE_DOWN_AMOUNT; // Move down
+                         // ゲームオーバー判定
+                         if (invader.y + invader.height > player.y) {
+                             endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
+                         }
+                     });
+                    lastInvaderMoveDownTime = currentTime; // 移動時間をリセット
                 }
             }
+
 
             // Invader shooting
             if (invaders.length > 0) {
@@ -1170,18 +1174,51 @@
 
             if (e.touches.length > 0) {
                 isPointerDown = true;
-                playerTargetX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                 // handleTouchMoveで座標計算を行うため、ここではフラグのみ設定
+                // playerTargetX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
             }
         }
 
+        // ★修正後の handleTouchMove 関数をここに貼り付けます★
         function handleTouchMove(e) {
             if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
 
-            e.preventDefault(); // Prevent default touch behaviors
+            e.preventDefault(); // デフォルトのスクロールやズームを防止
+
             if (e.touches.length > 0) {
-                playerTargetX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                const touchX = e.touches[0].clientX; // スクリーン座標でのタッチX
+                const rect = canvas.getBoundingClientRect(); // Canvasの表示位置とサイズを取得
+
+                // Canvas表示領域基準でのタッチX座標
+                let targetXOnCanvas = touchX - rect.left;
+
+                // --- スマートフォン向け端処理ロジック ---
+                // 画面端から何ピクセル以内にタッチしたら吸着させるかの閾値（表示ピクセル基準）
+                const edgeThreshold = 30; // この値を調整して感度を変更できます
+
+                // ゲーム座標と表示座標の比率
+                const gameToDisplayRatio = rect.width / GAME_WIDTH;
+
+                if (targetXOnCanvas < edgeThreshold) {
+                    // タッチがCanvas表示領域の左端の閾値内なら、ゲーム内の左端を目標にする
+                    // 自機の中心がゲーム内座標の左端 + 自機幅/2 になるように設定
+                    playerTargetX = player.width / 2;
+                } else if (targetXOnCanvas > rect.width - edgeThreshold) {
+                    // タッチがCanvas表示領域の右端の閾値内なら、ゲーム内の右端を目標にする
+                    // 自機の中心がゲーム内座標の右端 - 自機幅/2 になるように設定
+                     playerTargetX = GAME_WIDTH - player.width / 2;
+                } else {
+                    // それ以外の領域なら、通常通りタッチ位置をゲーム座標にマッピング
+                    playerTargetX = targetXOnCanvas / gameToDisplayRatio;
+                }
+                // --- 端処理ロジック終了 ---
+
+                // 目標座標がゲーム領域内に収まるようにクランプ（念のため）
+                playerTargetX = Math.max(player.width / 2, Math.min(playerTargetX, GAME_WIDTH - player.width / 2));
             }
         }
+        // ▲▲▲ handleTouchMove 関数の修正ここまで ▲▲▲
+
 
         function handleTouchEnd() {
             if (currentGameState !== GAME_STATE.PLAYING) return;
