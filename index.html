@@ -286,7 +286,9 @@
         const PLAYER_PROJECTILE_SPEED = 10;
         const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
-        const ENEMY_PROJECTILE_SPEED = 4; // インベーダーとボスの弾の速度 (旧 INVADER_PROJECTILE_SPEED)
+
+        // ★難易度調整: 敵の弾速を少し上げる
+        const ENEMY_PROJECTILE_SPEED = 5; // 変更: 4 -> 5
 
         const INVADER_ROWS = 5; // ★修正: 6から5に戻す（敵の行数）
         const INVADER_COLS = 5; // （敵の列数）
@@ -300,7 +302,8 @@
         const BOSS_WIDTH = 150; // ★変更: ボスの幅を大きく
         const BOSS_HEIGHT = 120; // ★変更: ボスの高さを大きく
         const BOSS_HP_PER_LEVEL = 10; // （ボスのHP）
-        const MAX_LEVELS = 30; // 最大レベル数を10に設定
+        const MAX_LEVELS = 30; // ★難易度調整: 最大レベル数を30に設定
+
         const PLAYER_WIDTH = 40; // 修正: 30から40に増加（自機の表示サイズ）
         const PLAYER_HEIGHT = 40; // 修正: 30から40に増加（自機の表示サイズ）
         const PLAYER_SHOOT_COOLDOWN_MAX = 15; // 修正: 20から15に減少（自機の発射間隔）
@@ -462,7 +465,7 @@
 
             // Touch event listeners for mobile
             document.body.addEventListener('touchstart', handleTouchStart, { passive: false });
-            document.body.addEventListener('touchmove', handleTouchMove, { passive: false }); // <--- ここに修正が入ります
+            document.body.addEventListener('touchmove', handleTouchMove, { passive: false });
             document.body.addEventListener('touchend', handleTouchEnd);
 
             // Mouse event listeners for desktop
@@ -615,8 +618,8 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        // レベルアップによる速度上昇を緩やかに
-                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 5),
+                        // ★難易度調整: インベーダーのレベルごとの速度増加率を上げる
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 7), // 変更: * 5 -> * 7
                         hp: 1
                     });
                 }
@@ -629,11 +632,13 @@
                 y: 30,
                 width: BOSS_WIDTH, // 変更後の幅を使用
                 height: BOSS_HEIGHT, // 変更後の高さを使用
-                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 10) * 1.5,
+                // ★難易度調整: ボスのレベルごとの速度増加率を上げる
+                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 13) * 1.5, // 変更: * 10 -> * 13
                 hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
                 shootTimer: 0,
+                // ★難易度調整: ボスのレベルごとの発射間隔の短縮率を上げる (攻撃頻度UP)
                 // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
-                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 15),
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 18), // 変更: * 15 -> * 18
                 isExploding: false, // ★追加: 爆発中フラグ
                 explosionTimer: 0, // ★追加: 爆発タイマー
                 explosionDuration: 50, // ★追加: 爆発時間 (フレーム単位, 1秒=60フレームとして)
@@ -825,8 +830,9 @@
 
             // Update invader projectiles (ボスの弾も含むのでdx, dyを使う)
             invaderProjectiles.forEach(p => {
-                p.x += p.dx;
-                p.y += p.dy;
+                // deltaTime を使って速度を調整
+                p.x += p.dx * deltaTime * 60; // dx/dyはフレーム単位速度を想定し、deltaTimeで補正
+                p.y += p.dy * deltaTime * 60;
             });
             invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT && p.x > -p.width && p.x < GAME_WIDTH + p.width);
 
@@ -874,18 +880,34 @@
             // Invader shooting
             if (invaders.length > 0) {
                 const randomInvader = invaders[Math.floor(Math.random() * invaders.length)];
-                // ボスの弾と通常のインベーダーの弾で発射間隔を分ける
-                const shootInterval = 90; // インベーダーの弾の発射間隔（フレーム単位、短めに設定）
-                if (Math.random() < 1 / shootInterval) { // 平均して shootInterval フレームに1回発射
+
+                // ★難易度調整: インベーダーのレベルごとの発射間隔を計算 (攻撃頻度UP)
+                // baseInvaderShootInterval: レベル1での基本間隔（フレーム単位）
+                // intervalDecreasePerLevel: レベルが1上がるごとに間隔がどれだけ短くなるか
+                const baseInvaderShootInterval = 90; // 例: 基本は90フレームに1回
+                const intervalDecreasePerLevel = 3;  // 例: レベルごとに3フレームずつ短縮
+
+                // 最小発射間隔を保証 (例: 最低でも30フレームに1回)
+                const currentInvaderShootInterval = Math.max(
+                    30, // 最小間隔（この値を調整して最速の発射頻度を変更できます）
+                    baseInvaderShootInterval - (currentLevel - 1) * intervalDecreasePerLevel
+                );
+                // ★修正箇所ここまで★
+
+
+                // 確率で弾を発射（計算した間隔を使用）
+                if (Math.random() < 1 / currentInvaderShootInterval) {
                     invaderProjectiles.push({
                         x: randomInvader.x + randomInvader.width / 2 - 2.5,
                         y: randomInvader.y + randomInvader.height,
                         width: 5,
                         height: 10,
                         dx: 0, // 通常のインベーダーの弾は縦方向のみ
-                        dy: ENEMY_PROJECTILE_SPEED,
+                        dy: ENEMY_PROJECTILE_SPEED, // ENEMY_PROJECTILE_SPEEDを使用
                         type: 'invader' // 弾の種類を識別
                     });
+                    // 必要であれば、インベーダーの発射音をここで再生
+                    // if (loadedAudio.invaderShoot) { loadedAudio.invaderShoot.play(); }
                 }
             }
 
@@ -915,7 +937,7 @@
                             width: 7,
                             height: 14,
                             dx: 0,
-                            dy: ENEMY_PROJECTILE_SPEED * 1.5, // ボスの弾は速めに
+                            dy: ENEMY_PROJECTILE_SPEED * 1.5, // ボスの弾は速めに (ENEMY_PROJECTILE_SPEEDを使用)
                             type: 'boss_straight'
                         });
 
@@ -929,8 +951,8 @@
                                 y: boss.y + boss.height,
                                 width: 7,
                                 height: 14,
-                                dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED,
-                                dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED,
+                                dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED, // ENEMY_PROJECTILE_SPEEDを使用
+                                dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED, // ENEMY_PROJECTILE_SPEEDを使用
                                 type: 'boss_radial'
                             });
                         }
@@ -1179,7 +1201,7 @@
             }
         }
 
-        // ★修正後の handleTouchMove 関数をここに貼り付けます★
+        // ★スマートフォン向けタッチ操作改善: 端での吸着ロジックを追加
         function handleTouchMove(e) {
             if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
 
