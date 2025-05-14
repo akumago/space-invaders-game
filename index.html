@@ -498,8 +498,8 @@
             ];
             const audioPromises = [
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
-                // 他のサウンドをここに追加ロードすることもできます (例: shoot, invaderHit, bossHit, bossExplosion)
-                // loadAudio('shoot', 'audio/shoot.mp3'),
+                // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
+                loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
                 // loadAudio('invaderHit', 'audio/invader_hit.mp3'),
                 // loadAudio('bossHit', 'audio/boss_hit.mp3'),
                 // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
@@ -858,14 +858,17 @@
 
                     // グループ全体の最小・最大X座標を追跡
                     minX = Math.min(minX, invader.x);
-                    maxX = Math.max(maxX, invader.x + invader.width); // ★修正: maxXはインベーダーの右端で計算
+                    maxX = Math.max(maxX, invader.x + invader.width); // maxXはインベーダーの右端で計算
                 });
 
                 let reverseDirection = false;
                 // 端にどれだけ食い込んだら方向転換させるかの許容量（ゲーム内単位）
-                const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2); // 例: 速度に応じて調整
+                // 速度が速いほど、少し手前で判定する必要があるかもしれません。
+                // dx * deltaTime はそのフレームで移動する距離に相当します。
+                const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2); // 例: 1フレームの移動距離の2倍
 
                 // グループ全体の左端が画面左端を超えたか、または右端が画面右端を超えたかチェック
+                // penetrationAmount を考慮して、少し手前で判定
                 if (minX < 0 + penetrationAmount && currentDirection < 0) { // 左に移動中で左端に到達
                     reverseDirection = true;
                 } else if (maxX > GAME_WIDTH - penetrationAmount && currentDirection > 0) { // 右に移動中で右端に到達
@@ -878,6 +881,7 @@
                         invader.dx *= -1; // 全てのインベーダーの水平方向の速度を反転
 
                         // 方向転換した直後に、端から少し押し戻す（ナッジ）処理
+                        // ナッジ量も penetrationAmount を使うことで、速度に依存して調整されます。
                         const nudge = (invader.dx > 0 ? penetrationAmount : -penetrationAmount); // 新しい進行方向に応じてナッジ量を調整
                          invader.x += nudge; // ナッジを適用
                     });
