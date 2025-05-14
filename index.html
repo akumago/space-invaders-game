@@ -922,7 +922,7 @@
             const playAgainButton = messageBox.querySelector('button');
 
             if (win) {
-                // ★ここを修正します★
+                console.log(`endGame: Checking final boss trigger. currentLevel: ${currentLevel}, MAX_LEVELS: ${MAX_LEVELS}, finalBoss: ${finalBoss}`); // ★この行を追加★
                 if (currentLevel === MAX_LEVELS && !finalBoss) { // レベルがMAX_LEVELSと等しいかチェック AND 最終ボスがまだ出現していないかチェック
                     // ★レベル30クリアなら最終ボス戦へ移行★
                     hideMessageBox(); // メッセージボックスは表示しない
@@ -1202,7 +1202,7 @@
                              boss = null; // 爆発アニメーション終了後、ボスを消滅させる
                              score += 5000 * currentLevel; // ボス撃破ボーナス
                              updateScoreDisplay();
-                             console.log("update内でendGame(true)を呼び出す直前です。"); // ★追加ログ★
+                              console.log("update内でendGame(true)を呼び出す直前です。"); // ★追加ログ★
                              endGame(true); // ★中間レベルクリアとして endGame を呼び出す★
                          }
                      }
