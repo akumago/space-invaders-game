@@ -855,14 +855,36 @@
         }
 
 
-        function endGame(win) {
-            // ゲーム状態を一時的にGAME_OVERに設定 (表示を切り替えるため)
-            // 最終ボス戦では状態を PLAYING のままにするか、新しい状態にするか検討が必要
-            // 一旦ここでは GAME_OVER にして表示を切り替えます
-            // finalBoss戦中は GAME_OVER にしないように STATE をチェックする必要あり
-             if (currentGameState !== GAME_STATE.FINAL_BOSS) { // 最終ボス戦中でなければ状態をGOに
+       function endGame(win) {
+            // ゲーム状態を一時的にGAME_OVERに設定 (通常のゲームオーバー、または中間レベルクリア後のメッセージ表示用)
+            // 最終ボス戦へ移行する場合、および最終ボス撃破時は、状態を適切に処理
+             let shouldSetGameOver = true; // デフォルトではGAME_OVERに設定する
+
+             if (win && currentLevel === MAX_LEVELS && !finalBoss) {
+                 // レベル30をクリアして最終ボス戦へ移行する場合
+                 shouldSetGameOver = false; // GAME_OVERにはしない (startFinalBossBattleでFINAL_BOSSに設定される)
+             } else if (win && finalBoss && finalBoss.hp <= 0) {
+                 // 最終ボスを撃破した場合 (GAME_OVER に移行してゲームクリアメッセージを表示)
+                 shouldSetGameOver = true; // GAME_OVERにする
+             } else if (!win) {
+                 // プレイヤーが敗北した場合 (GAME_OVER に移行してゲームオーバーメッセージを表示)
+                 shouldSetGameOver = true; // GAME_OVERにする
+             } else if (currentLevel < MAX_LEVELS && win) {
+                 // 中間レベルをクリアした場合 (メッセージ表示のため一時的にGAME_OVER状態にする)
+                 shouldSetGameOver = true; // GAME_OVERにする
+             }
+
+
+             if (shouldSetGameOver) {
                 currentGameState = GAME_STATE.GAME_OVER;
              }
+
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            // ... この下に他の endGame のコードが続きます（修正したくない既存コード） ...
 
 
             if (animationFrameId) {
