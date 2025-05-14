@@ -1245,6 +1245,26 @@
                 // If you want keyboard shooting, re-enable the shootProjectile() call here.
                 // shootProjectile();
             }
+             // Lキーが押されたかチェック
+            if (e.key === 'L' || e.key === 'l') {
+                console.log("Level Skip to Final Boss Trigger!"); // Debug Log
+                // 現在のゲーム状態が、スキップを許可する状態かチェック
+                if (currentGameState !== GAME_STATE.LOADING && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
+                     console.log("Changing state to FINAL_BOSS"); // Debug Log
+                    currentLevel = 30; // デバッグ用にレベルを最終レベルに設定
+                    currentGameState = GAME_STATE.FINAL_BOSS; // ゲーム状態を最終ボス戦に設定
+                    // この時点では最終ボスオブジェクトの生成は行いません。次のステップで追加します。
+
+                    updateLevelDisplay(); // レベル表示を更新
+
+                    // ゲーム画面から敵や弾を消す処理 (オプション)
+                    invaders = [];
+                    boss = null;
+                    invaderProjectiles = [];
+                } else {
+                    console.log("Level Skip ignored: Game is not in a state where skip is allowed or already in FINAL_BOSS.");
+                }
+            }
         }
 
         function handleKeyUp(e) {
