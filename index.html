@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Improved Space Invaders</title>
     <style>
+        /* ... (CSS部分は省略 - 変更ありません) ... */
         /* 全体のリセットと基本設定 */
         html, body {
             margin: 0;
@@ -968,8 +969,19 @@
                     }
                 }
 
+                 // ★★★ここが通常ボス出現のロジックです！★★★
+                // インベーダー全滅かつ、まだ通常ボスが生成されていない場合
+                if (invaders.length === 0 && !boss && !bossCreatedForThisLevel && currentLevel < MAX_LEVELS) { // MAX_LEVELS未満のレベルでのみ通常ボスを生成
+                     console.log(`Invaders cleared on Level ${currentLevel}. Spawning Boss!`); // Debug Log
+                     createBoss(); // 通常ボスを生成
+                     bossCreatedForThisLevel = true; // このレベルでボスは生成済みとする
+                     // 通常ボス出現音があれば再生 (loadedAudio.bossSpawnなど)
+                }
+                 // ★★★通常ボス出現のロジック、ここまで！★★★
+
+
                 // Boss movement and shooting (PLAYING状態かつ通常ボスが存在する場合)
-                if (boss && !boss.isExploding) {
+                if (boss && !boss.isExploding) { // ボスが爆発中でなければ更新
                     boss.x += boss.dx * deltaTime;
 
                     if (boss.x + boss.width > GAME_WIDTH || boss.x < 0) {
@@ -990,7 +1002,7 @@
                         const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(currentLevel / 2);
                         const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
                         for (let i = 0; i < radialCount; i++) {
-                            const angle = startAngle + (BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1)) * i;
+                            const angle = startAngle + (radialCount > 1 ? BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1) : 0) * i; // 弾が1つの場合は角度ステップは0
                             invaderProjectiles.push({
                                 x: boss.x + boss.width / 2 - 2.5,
                                 y: boss.y + boss.height,
@@ -1006,23 +1018,28 @@
                         boss = null; // 爆発アニメーション終了後、ボスを消滅させる
                         score += 5000 * currentLevel; // ボス撃破ボーナス
                         updateScoreDisplay();
-                        // 通常レベルクリア判定 (インベーダーと通常ボス両方いない場合)
+                        // 通常レベルクリア判定 (インベーダーと通常ボス両方いない場合) - これは boss=null になった直後にチェック
                         if (invaders.length === 0 && !boss && currentLevel < MAX_LEVELS) {
-                            endGame(true);
+                            endGame(true); // 通常レベルクリア画面へ移行
+                        } else if (invaders.length === 0 && !boss && currentLevel >= MAX_LEVELS) {
+                             // MAX_LEVELSで通常ボスを倒した場合の処理
+                             // ここで最終ボス戦開始の準備を行うか、endGame(true)でクリアメッセージを出すか選択
+                             // 今回はLキーで最終ボス戦にスキップするので、ここでは endGame(true) でクリアメッセージを出すのみにしておく
+                             endGame(true); // MAXレベルの通常ボス撃破でも一旦クリア画面へ（本来は最終ボス戦へ）
                         }
                     }
                 }
 
-                // 通常レベルクリア判定 (インベーダー全滅かつ通常ボス撃破)
-                // 通常ボス撃破時の処理内に移動したのでここでは削除
+                // 通常レベルクリア判定 (インベーダー全滅かつ通常ボス撃破後)
+                // これはボス撃破時の処理内に移動したのでここでは削除
                 // if (invaders.length === 0 && !boss && currentLevel < MAX_LEVELS) {
                 //     endGame(true);
                 // }
             }
 
-            // ★★★ここから FINAL_BOSS 状態の更新処理を追加！★★★
+            // ★★★ここから FINAL_BOSS 状態の更新処理！★★★
             if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss) {
-                 if (!finalBoss.isExploding) {
+                 if (!finalBoss.isExploding) { // 最終ボスが爆発中でなければ更新
                      // 最終ボスの移動ロジック（必要であれば実装、この時点では停止）
                      // finalBoss.x += finalBoss.dx * deltaTime;
 
@@ -1044,7 +1061,7 @@
                      if (finalBoss.radialShootTimer >= finalBoss.radialShootInterval) {
                           const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(MAX_LEVELS / 5); // 最終ボスなので固定数または最大レベル基準
                           const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
-                          const angleStep = BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1);
+                          const angleStep = radialCount > 1 ? BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1) : 0; // 弾が1つの場合は角度ステップは0
 
                           for (let i = 0; i < radialCount; i++) {
                                const angle = startAngle + i * angleStep;
@@ -1083,6 +1100,7 @@
         }
 
         // --- Drawing Functions ---
+        // ... (draw 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
 
         function draw() {
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -1195,7 +1213,9 @@
             });
         }
 
+
         // --- Collision Detection ---
+        // ... (checkCollisions 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
 
         function checkCollisions() {
             // Player projectiles hitting invaders (PLAYING状態のみ)
@@ -1292,9 +1312,10 @@
                 rect1.y + rect1.height > rect2.y;
         }
 
+
         // --- Input Handling ---
 
-        // ★★★ handleKeyDown 関数全体を、以下の修正済みのコードブロックと丸ごと置き換えてください ★★★
+        // ★★★ handleKeyDown 関数全体は変更ありません - 前回貼り付けた、Lキーと最終ボス生成コードを含むものと同じです ★★★
         function handleKeyDown(e) {
             // ゲームプレイ中 (PLAYING) または最終ボス戦中 (FINAL_BOSS) のみキー操作を有効にする
             // この関数の最初の状態チェックは、このままで大丈夫です。
@@ -1315,11 +1336,11 @@
             }
             // ↑↑↑ この既存のキー操作のブロックはここで終わっています ↑↑↑
 
-            // ↓↓↓ ★★★ここから、Lキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
+            // ↓↓↓ ★★★ここから、前回追加したLキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
             if (e.key === 'L' || e.key === 'l') { // Lキーが押されたかチェック
                 console.log("Level Skip to Final Boss Trigger!"); // Debug Log
                 // 現在のゲーム状態が、スキップを許可する状態かチェック
-                if (currentGameState !== GAME_STATE.LOADING && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
+                if (currentGameState !== GAME_STATE.LOADING && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
                      console.log("Changing state to FINAL_BOSS"); // Debug Log
                     currentLevel = 30; // デバッグ用にレベルを最終レベルに設定
                     currentGameState = GAME_STATE.FINAL_BOSS; // ゲーム状態を最終ボス戦に設定
@@ -1331,7 +1352,7 @@
 
                     updateLevelDisplay(); // レベル表示を更新
 
-                    // ↓↓↓ ★★★ここが、今回追加する最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
+                    // ↓↓↓ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
                      finalBoss = {
                          x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // 中央に配置
                          y: 30, // 上の方に配置
@@ -1356,7 +1377,7 @@
                     console.log("Level Skip ignored: Game is not in a state where skip is allowed or already in FINAL_BOSS.");
                 }
             }
-            // ↑↑↑ ★★★ここまでが、前回追加したLキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
+            // ↑↑↑ ★★★ここまでが、Lキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
 
         } // handleKeyDown 関数の最後の閉じ波括弧
 
