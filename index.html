@@ -876,13 +876,14 @@
 
 
              if (shouldSetGameOver) {
-                currentGameState = GAME_STATE.GAME_OVER;
-             }
-
-            if (animationFrameId) {
+                 if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
+                currentGameState = GAME_STATE.GAME_OVER;
+             }
+
+          
 
             // ... この下に他の endGame のコードが続きます（修正したくない既存コード） ...
 
