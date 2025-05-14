@@ -1626,15 +1626,22 @@
             }
              // ★デバッグ用: レベルスキップ (必要に応じてコメント解除して使用)
              
+           // ★デバッグ用: レベルスキップ (最終ボス戦開始トリガーを直接テスト)
              if (e.key === 'L' || e.key === 'l') {
-                  console.log("Level Skip!");
-                  currentLevel = MAX_LEVELS - 1; // 最終レベルの直前にスキップ
-                  // 現在の敵をクリアして endGame(true) を呼び出す必要がある
-                  invaders = [];
-                  boss = null;
-                  // 一旦ここでレベルを更新して draw を呼ぶと表示が変わる
-                  updateLevelDisplay();
-                  // 次の update ループで endGame(true) が呼ばれるはず
+                  console.log("Level Skip to Final Boss Start Trigger!"); // ★新しいログ★
+                  currentLevel = MAX_LEVELS; // ★レベルを直接MAX_LEVELSに設定★
+                  invaders = []; // インベーダーを全てクリア
+                  projectiles = []; // 自機弾をクリア
+                  invaderProjectiles = []; // 敵弾を全てクリア
+                  boss = null; // 通常ボスをクリア
+                  finalBoss = null; // ★最終ボスもクリア (念のため)★
+                  bossCreatedForThisLevel = false; // 通常ボス生成フラグをリセット
+
+                  updateLevelDisplay(); // レベル表示を更新 (Level: 30 になるはず)
+
+                  // 強制的に endGame(true) を呼び出し、最終ボス戦開始ロジックをトリガー
+                  console.log("Level Skip: Directly calling endGame(true) to trigger final boss."); // ★新しいログ★
+                  endGame(true); // ★直接 endGame(true) を呼び出す★
              }
              
         }
