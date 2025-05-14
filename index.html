@@ -1179,6 +1179,7 @@
                              boss = null; // 爆発アニメーション終了後、ボスを消滅させる
                              score += 5000 * currentLevel; // ボス撃破ボーナス
                              updateScoreDisplay();
+                             endGame(true); // ★中間レベルクリアとして endGame を呼び出す★
                          }
                      }
                  }
