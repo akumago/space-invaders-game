@@ -1005,6 +1005,10 @@
         // --- Game Loop ---
 
         function update(timestamp) {
+            console.log("Update function start"); // ★この行を一番最初に追加★
+            // ... その下に delta time 計算などのコードが続きます ...
+            // if (currentGameState === ...) { ... return; } の判定より前に置く
+        }
             const deltaTime = (timestamp - lastTimestamp) / 1000; // 秒単位
             lastTimestamp = timestamp;
 
@@ -1308,6 +1312,10 @@
         // --- Drawing Functions ---
 
         function draw() {
+            console.log("Draw function start"); // ★この行を一番最初に追加★
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // キャンバスクリア
+            // ... その下に描画処理のコードが続きます ...
+        
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT); // 前のフレームをクリア
 
             // Draw player
