@@ -317,6 +317,7 @@
             START_SCREEN: 'START_SCREEN', // 最初の「TAP TO START」で動画再生
             PLAYING: 'PLAYING', // 実際のゲームプレイ中
             GAME_OVER: 'GAME_OVER' // ゲームオーバー/クリア画面
+            FINAL_BOSS: 'FINAL_BOSS' // ★この行を追加★
         };
 
         // --- Global Variables ---
@@ -334,6 +335,7 @@
         let loadedImages = {};
         let loadedAudio = {};
         let boss = null;
+         let finalBoss = null;
         let bossCreatedForThisLevel = false; // ★追加: ボスがこのレベルで生成されたかどうかのフラグ
 
         // Player shooting cooldown
@@ -1257,6 +1259,7 @@
 
         function handleTouchStart(e) {
             if (currentGameState !== GAME_STATE.PLAYING) return;
+            
 
             e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming
 
