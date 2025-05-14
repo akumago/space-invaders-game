@@ -510,25 +510,20 @@
             return Promise.all([...imagePromises, ...audioPromises]);
         }
 
-        function loadImage(name, src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.src = src;
-                img.onload = () => {
-                    loadedImages[name] = img;
-                    resolve();
-                };
-                img.onerror = (e) => reject(new Error(`Failed to load image: ${src} (${e.message || e})`));
-            });
-        }
-
         function loadAudio(name, src) {
             return new Promise((resolve, reject) => {
                 const sound = new Howl({
                     src: [src],
-                    volume: Howler.volume(),
+                    volume: Howler.volume(), // <-- ここは全体音量を参照
                     onload: () => {
                         loadedAudio[name] = sound;
+
+                         // ★ミサイル音の個別の音量を調整
+                         if (name === 'shoot') {
+                             sound.volume(0.5); // 音量を0.5（半分の大きさ）に設定
+                         }
+                         // ★修正箇所ここまで★
+
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
                     onloaderror: (id, error) => reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`))
@@ -865,6 +860,7 @@
                 // 端にどれだけ食い込んだら方向転換させるかの許容量（ゲーム内単位）
                 // 速度が速いほど、少し手前で判定する必要があるかもしれません。
                 // dx * deltaTime はそのフレームで移動する距離に相当します。
+                // ★難易度や速度に応じてこの値を調整して、壁に当たる感度を調整してください。
                 const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2); // 例: 1フレームの移動距離の2倍
 
                 // グループ全体の左端が画面左端を超えたか、または右端が画面右端を超えたかチェック
