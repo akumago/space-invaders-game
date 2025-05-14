@@ -1316,10 +1316,10 @@
         // --- Input Handling ---
 
         // ★★★ handleKeyDown 関数全体は変更ありません - 前回貼り付けた、Lキーと最終ボス生成コードを含むものと同じです ★★★
-        function handleKeyDown(e) {
+      function handleKeyDown(e) {
             // ゲームプレイ中 (PLAYING) または最終ボス戦中 (FINAL_BOSS) のみキー操作を有効にする
             // この関数の最初の状態チェックは、このままで大丈夫です。
-            if (currentGameState !== GAME_STATE.PLAYING) return;
+            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return; // ★FINAL_BOSS状態でもキー操作を有効にするように修正★
 
             // ここに既存のキー操作 (矢印キーやスペースキー) の if / else if ブロックがあります
             if (e.key === 'ArrowLeft' || e.key === 'a') {
@@ -1336,7 +1336,7 @@
             }
             // ↑↑↑ この既存のキー操作のブロックはここで終わっています ↑↑↑
 
-            // ↓↓↓ ★★★ここから、前回追加したLキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
+            // ↓↓↓ ★★★ここから、前回追加したLキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
             if (e.key === 'L' || e.key === 'l') { // Lキーが押されたかチェック
                 console.log("Level Skip to Final Boss Trigger!"); // Debug Log
                 // 現在のゲーム状態が、スキップを許可する状態かチェック
@@ -1373,11 +1373,19 @@
                      };
                     // ↑↑↑ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
 
+                    // ↓↓↓ ★★★ここから音楽停止ロジックを追加！★★★ ↓↓↓
+                     if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                         loadedAudio.backgroundMusic.stop(); // 背景音楽を停止
+                         // 最終ボス戦用の音楽があればここで再生（今は停止のみ）
+                         // if (loadedAudio.finalBossMusic) { loadedAudio.finalBossMusic.play(); }
+                     }
+                    // ↑↑↑ ★★★音楽停止ロジック、ここまで！★★★
+
                 } else {
                     console.log("Level Skip ignored: Game is not in a state where skip is allowed or already in FINAL_BOSS.");
                 }
             }
-            // ↑↑↑ ★★★ここまでが、Lキーのコードブロック（最終ボスオブジェクト生成を追加済）です！★★★ ↓↓↓
+            // ↑↑↑ ★★★ここまでが、前回追加したLキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
 
         } // handleKeyDown 関数の最後の閉じ波括弧
 
