@@ -1262,6 +1262,11 @@
                          //     loadedAudio.bossSpawn.play();
                          // }
                      }
+                     // ★追加: レベル30で通常の敵を全滅させた場合の最終ボス戦開始判定
+                 if (invaders.length === 0 && !boss && currentLevel === MAX_LEVELS && !finalBoss) {
+                     console.log("レベル30の敵を全滅！最終ボス戦開始の条件を満たしました。"); // 確認用
+                     startFinalBossBattle(); // 最終ボス戦開始関数を呼び出す
+                 }
                      // 通常ボス撃破後のレベルクリア判定は endGame で行われます。
                  }
              } else if (currentGameState === GAME_STATE.FINAL_BOSS) {
