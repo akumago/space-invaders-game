@@ -530,7 +530,7 @@
                     onload: () => {
                         loadedAudio[name] = sound;
                         if (name === 'shoot') { // もし読み込んだ音がミサイル音(shoot)なら
-                             sound.volume(0.3); // その音の個別音量を0.5に設定する (ここを調整！)
+                             sound.volume(0.1); // その音の個別音量を0.5に設定する (ここを調整！)
                          }
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
