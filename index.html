@@ -294,11 +294,11 @@
         const INVADER_COLS = 5; // （敵の列数）
         const INVADER_WIDTH = 75; // （敵の表示サイズ）
         const INVADER_HEIGHT = 75; // （敵の表示サイズ）
-        
+
         // インベーダー間の横方向の間隔と縦方向の間隔を調整
         const INVADER_SPACING_X = 10; // インベーダー間の横方向の間隔を詰める
         const INVADER_SPACING_Y = 15; // インベーダー間の縦方向の間隔を調整
-        
+
         const BOSS_WIDTH = 150; // ★変更: ボスの幅を大きく
         const BOSS_HEIGHT = 120; // ★変更: ボスの高さを大きく
         const BOSS_HP_PER_LEVEL = 10; // （ボスのHP）
@@ -366,7 +366,9 @@
 
         function init() {
             initGameEssentials();
+            // アセットロードを開始し、完了後にスタート画面を表示
             loadAssets().then(() => {
+                // ★ アセットのロードが成功したらここに到達します。
                 hideLoadingMessage();
                 currentGameState = GAME_STATE.START_SCREEN;
                 showStartButton(); // これで「TAP TO START」が表示される
@@ -411,8 +413,23 @@
                     }
                 });
             }).catch(error => {
+                // ★ アセットのロードが失敗したらここに到達します。
+                // ★ ここに書かれたエラーメッセージが、「Loading Game Assets...」の下に表示されるはずです。
                 console.error("Error loading assets:", error);
                 loadingMessage.innerText = `Error loading assets: ${error.message || error}. Please check console for details.`;
+                 // アセットロード失敗時、エラーメッセージをユーザーに表示
+                 showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
+                 // エラー時は「Play Again」ボタンを「Retry Loading」などに変更しても良い
+                 const playAgainButton = messageBox.querySelector('button');
+                 playAgainButton.innerText = "Retry Loading";
+                 playAgainButton.onclick = () => {
+                    hideMessageBox();
+                    // ゲーム状態をリセットして再度initを呼び出す
+                    resetGameState();
+                    init();
+                 };
+                 // showMessage() は一度呼び出せば良いので、上の行はコメントアウトしました。
+                 // showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
             });
         }
 
@@ -442,7 +459,7 @@
                 backgroundVideo.muted = true; // 最初はミュートにする
             }
 
-            // ★修正：Howler.jsの背景音楽はここで停止せず、startGameで制御する
+            // Howler.jsの背景音楽はstartGameで制御
             // if (loadedAudio.backgroundMusic) {
             //     loadedAudio.backgroundMusic.stop();
             // }
@@ -482,66 +499,9 @@
             }
         }
 
-        // ★loadImage と loadAudio 関数は、loadAssets 関数が呼び出される前に定義されている必要があります。
-        // ★このコードでは、init -> loadAssets の順で呼び出されるため、loadImage/loadAudio は initGameEssentials より後に定義されていても問題ありません。
 
-        function loadAssets() {
-            showLoadingMessage();
-            const imagePromises = [
-                // プレイヤーの画像
-                loadImage('player', 'image/invader3.png'),
-
-                // インベーダーの画像
-                loadImage('invader', 'image/invader1.png'),
-
-                // ボスの画像
-                loadImage('boss', 'image/invader2.png'),
-
-                // ★追加: ボス爆発の画像
-                loadImage('boss_explosion', 'image/explosion.png'),
-            ];
-            const audioPromises = [
-                loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
-                // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
-                loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
-                // loadAudio('invaderHit', 'audio/invader_hit.mp3'),
-                // loadAudio('bossHit', 'audio/boss_hit.mp3'),
-                // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
-                // loadAudio('bossSpawn', 'audio/boss_spawn.mp3'), // ボス出現音 (必要であれば)
-                // loadAudio('playerHit', 'audio/player_hit.mp3'), // 自機被弾音 (必要であれば)
-            ];
-
-            return Promise.all([...imagePromises, ...audioPromises]).then(() => {
-                hideLoadingMessage();
-                currentGameState = GAME_STATE.START_SCREEN;
-                showStartButton(); // これで「TAP TO START」が表示される
-                 // ここで背景動画の再生を開始
-                 if (backgroundVideo) {
-                    backgroundVideo.muted = false; // ミュート解除
-                    backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                    backgroundVideo.play().catch(e => console.error("Video playback error:", e));
-                    backgroundVideo.style.display = 'block'; // 動画を表示
-                    backgroundVideo.style.zIndex = -1; // キャンバスより奥に
-                 }
-
-            }).catch(error => {
-                console.error("Error loading assets:", error);
-                loadingMessage.innerText = `Error loading assets: ${error.message || error}. Please check console for details.`;
-                 // アセットロード失敗時、エラーメッセージをユーザーに表示
-                 showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
-                 // エラー時は「Play Again」ボタンを「Retry Loading」などに変更しても良い
-                 const playAgainButton = messageBox.querySelector('button');
-                 playAgainButton.innerText = "Retry Loading";
-                 playAgainButton.onclick = () => {
-                    hideMessageBox();
-                    // ゲーム状態をリセットして再度initを呼び出す
-                    resetGameState();
-                    init();
-                 };
-                 showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
-            });
-        }
-
+        // --- Utility Functions (Define First) ---
+        // loadAssets 関数から呼び出されるため、loadAssets よりも手前に定義が必要です
         function loadImage(name, src) {
             return new Promise((resolve, reject) => {
                 const img = new Image();
@@ -565,13 +525,10 @@
                     volume: Howler.volume(), // <-- ここは全体音量を参照
                     onload: () => {
                         loadedAudio[name] = sound;
-
                          // ★ミサイル音の個別の音量を調整
                          if (name === 'shoot') {
                              sound.volume(0.5); // 音量を0.5（半分の大きさ）に設定
                          }
-                         // ★修正箇所ここまで★
-
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
                     onloaderror: (id, error) => {
@@ -712,9 +669,187 @@
             levelDisplay.innerText = `Level: ${currentLevel}`;
         }
 
-        // --- Game State Management ---
-        // createInvaders, createBoss, startGame, endGame 関数は上に移動しました
+        // --- Game State Management Functions ---
 
+        function createInvaders() {
+            invaders = [];
+            // インベーダー全体の幅を計算
+            // INVADER_COLS 個のインベーダーがあり、間に INVADER_COLS-1 個のスペースがある
+            const totalInvaderBlockWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING_X);
+            // 開始X座標を計算（中央揃え）
+            const startX = (GAME_WIDTH - totalInvaderBlockWidth) / 2;
+            const startY = 80; // インベーダーの初期Y座標は高く保つ
+
+            for (let row = 0; row < INVADER_ROWS; row++) {
+                for (let col = 0; col < INVADER_COLS; col++) {
+                    invaders.push({
+                        x: startX + col * (INVADER_WIDTH + INVADER_SPACING_X),
+                        y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
+                        width: INVADER_WIDTH,
+                        height: INVADER_HEIGHT,
+                        // ★難易度調整: インベーダーのレベルごとの速度増加率を上げる
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 7), // 変更: * 5 -> * 7
+                        hp: 1
+                    });
+                }
+            }
+        }
+
+        function createBoss() {
+            boss = {
+                x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // ★変更: 中央に配置
+                y: 30,
+                width: BOSS_WIDTH, // 変更後の幅を使用
+                height: BOSS_HEIGHT, // 変更後の高さを使用
+                // ★難易度調整: ボスのレベルごとの速度増加率を上げる
+                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 13) * 1.5, // 変更: * 10 -> * 13
+                hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
+                shootTimer: 0,
+                // ★難易度調整: ボスのレベルごとの発射間隔の短縮率を上げる (攻撃頻度UP)
+                // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 18), // 変更: * 15 -> * 18
+                isExploding: false, // ★追加: 爆発中フラグ
+                explosionTimer: 0, // ★追加: 爆発タイマー
+                explosionDuration: 50, // ★追加: 爆発時間 (フレーム単位, 1秒=60フレームとして)
+                originalImage: 'boss', // ★追加: 元の画像キー
+                explosionImage: 'boss_explosion' // ★追加: 爆発用画像キー (loadImageに追加済み)
+            };
+        }
+
+        function startGame(isNewGame) {
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            if (isNewGame) {
+                score = 0;
+                lives = 3;
+                currentLevel = 1;
+            } else {
+                // 既存のゲームからの継続の場合、プレイヤーの状態のみリセット
+                player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
+                player.movingLeft = false;
+                player.movingRight = false;
+                player.invincible = false;
+                player.invincibleTimer = 0;
+                player.blinkTimer = 0;
+            }
+
+            boss = null; // ボスは最初に生成しない（インベーダー全滅後に生成）
+            bossCreatedForThisLevel = false; // ★修正: 新しいゲームまたはレベル開始時にリセット
+            projectiles = [];
+            invaderProjectiles = [];
+
+            createInvaders(); // まずインベーダーのみを生成
+
+            updateScoreDisplay();
+            updateLivesDisplay();
+            updateLevelDisplay();
+            hideMessageBox();
+            hideStartButton(); // ゲーム開始時に動画を非表示にしキャンバスを表示
+
+            currentGameState = GAME_STATE.PLAYING;
+            lastTimestamp = performance.now();
+
+            // ★修正：音楽が既に再生中でなければ再生開始、ループを設定
+            if (loadedAudio.backgroundMusic && !loadedAudio.backgroundMusic.playing()) {
+                 loadedAudio.backgroundMusic.play();
+                 loadedAudio.backgroundMusic.loop(true); // ループを有効にする
+                 loadedAudio.backgroundMusic.volume(Howler.volume());
+            }
+
+
+            animationFrameId = requestAnimationFrame(update);
+
+            lastInvaderMoveDownTime = performance.now();
+        }
+
+        function endGame(win) {
+            currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を一時的にGAME_OVERに設定
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            // ★修正：ゲームオーバー（敗北）の場合のみBGMを停止
+            if (!win) {
+                if (loadedAudio.backgroundMusic) {
+                    loadedAudio.backgroundMusic.stop();
+                }
+            }
+
+
+            // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
+            if (backgroundVideo) {
+                backgroundVideo.style.display = 'none';
+                backgroundVideo.pause();
+                backgroundVideo.currentTime = 0;
+            }
+            canvas.style.display = 'block'; // キャンバスをメッセージボックスの背後に表示
+
+            let message = '';
+            const playAgainButton = messageBox.querySelector('button');
+
+            if (win) {
+                if (currentLevel >= MAX_LEVELS) {
+                    // 最終レベルをクリアした場合
+                    message = `You Win! Final Score: ${score}`;
+                    playAgainButton.innerText = "Play Again";
+                    playAgainButton.onclick = () => {
+                        hideMessageBox();
+                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
+                    };
+                    // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                    if (backgroundVideo) {
+                        backgroundVideo.style.display = 'block';
+                        backgroundVideo.currentTime = 0;
+                        backgroundVideo.muted = false;
+                        backgroundVideo.volume = Howler.volume();
+                        backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                        backgroundVideo.style.zIndex = -1;
+                    }
+                    canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+                    // ★最終クリア時もBGMは停止
+                    if (loadedAudio.backgroundMusic) {
+                        loadedAudio.backgroundMusic.stop();
+                    }
+                } else {
+                    // 中間レベルをクリアした場合
+                    message = `Level ${currentLevel} Clear! Score: ${score}`;
+                    currentLevel++; // 次のレベルへ進む
+                    playAgainButton.innerText = `Next Level (${currentLevel})`;
+                    playAgainButton.onclick = () => {
+                        hideMessageBox();
+                        // 次のレベルへ直接移行し、最初のスタート画面に戻らない
+                        startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
+                    };
+                    // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
+                    canvas.style.display = 'block'; // キャンバスは表示したまま
+                    // ★中間レベルクリア時はBGMは停止しない（継続再生）
+                }
+            } else {
+                // ゲームオーバー（敗北）の場合
+                message = `Game Over! Score: ${score}`;
+                playAgainButton.innerText = "Play Again";
+                playAgainButton.onclick = () => {
+                    hideMessageBox();
+                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
+                };
+                // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                if (backgroundVideo) {
+                    backgroundVideo.style.display = 'block';
+                    backgroundVideo.currentTime = 0;
+                    backgroundVideo.muted = false;
+                    backgroundVideo.volume = Howler.volume();
+                    backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                    backgroundVideo.style.zIndex = -1;
+                }
+                canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+                // ★ゲームオーバー時はBGM停止（上記で処理済み）
+            }
+            showMessage(message);
+        }
 
         // --- Game Loop ---
 
@@ -904,7 +1039,7 @@
                         const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(currentLevel / 2); // 例: 2レベルごとに1つ追加
                         const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2; // 拡散開始角度
                         for (let i = 0; i < radialCount; i++) {
-                            const angle = startAngle + (BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1)) * i;
+                            const angle = startAngle + (BOSS_RADIAL_SPREAD_ANGLE / (radialCount > 1 ? radialCount - 1 : 1)) * i; // radialCount=1 の場合の0割り回避
                             invaderProjectiles.push({
                                 x: boss.x + boss.width / 2 - 2.5,
                                 y: boss.y + boss.height,
@@ -915,9 +1050,9 @@
                                 type: 'boss_radial'
                             });
                         }
-                        if (loadedAudio.bossShoot) {
-                            loadedAudio.bossShoot.play();
-                        }
+                        // if (loadedAudio.bossShoot) { // ボス発射音が必要であれば有効化
+                        //     loadedAudio.bossShoot.play();
+                        // }
                         boss.shootTimer = 0;
                     }
                 } else {
@@ -953,9 +1088,9 @@
                 if (!bossCreatedForThisLevel) {
                     createBoss();
                     bossCreatedForThisLevel = true; // ボス生成フラグを立てる
-                    if (loadedAudio.bossSpawn) {
-                        loadedAudio.bossSpawn.play();
-                    }
+                    // if (loadedAudio.bossSpawn) { // ボス出現音が必要であれば有効化
+                    //     loadedAudio.bossSpawn.play();
+                    // }
                 } else if (currentLevel < MAX_LEVELS) {
                     // ボスも撃破し、次のレベルがある場合
                     endGame(true); // レベルクリア
@@ -1017,11 +1152,27 @@
                     const drawWidth = spriteWidth;
                     const drawHeight = spriteHeight;
 
-                    ctx.drawImage(
-                        loadedImages[boss.explosionImage],
-                        frame * spriteWidth, 0, spriteWidth, spriteHeight, // スプライトシートから切り出す範囲
-                        drawX, drawY, drawWidth, drawHeight // キャンバスに描画する位置とサイズ
-                    );
+                    // 切り出すフレームがスプライトシートの範囲内かチェック
+                    const sourceX = frame * spriteWidth;
+                    if (loadedImages[boss.explosionImage].width > sourceX) {
+                         ctx.drawImage(
+                             loadedImages[boss.explosionImage],
+                             sourceX, 0, spriteWidth, spriteHeight, // スプライトシートから切り出す範囲
+                             drawX, drawY, drawWidth, drawHeight // キャンバスに描画する位置とサイズ
+                         );
+                    } else {
+                         // 最終フレームを超えたら最後のフレームを描画するか、描画しない
+                         // ここでは最後のフレームを描画します
+                         const lastFrameSourceX = (Math.floor(boss.explosionDuration / (boss.explosionDuration / 8)) - 1) * spriteWidth;
+                          if (loadedImages[boss.explosionImage].width > lastFrameSourceX) {
+                             ctx.drawImage(
+                                 loadedImages[boss.explosionImage],
+                                 lastFrameSourceX, 0, spriteWidth, spriteHeight, // スプライトシートから切り出す範囲
+                                 drawX, drawY, drawWidth, drawHeight // キャンバスに描画する位置とサイズ
+                             );
+                          }
+                    }
+
 
                 } else if (loadedImages[boss.originalImage]) {
                     ctx.drawImage(loadedImages[boss.originalImage], boss.x, boss.y, boss.width, boss.height);
@@ -1062,86 +1213,90 @@
 
         function checkCollisions() {
             // Player projectiles hitting invaders
-            projectiles.forEach((p, pIndex) => {
-                // projectilesは衝突後削除されるので、逆順にループすると安全ですが、
-                // filterで処理するのでここではforEachでも問題ありません。
-                // invaderIndexはspliceによって変わる可能性があるため、
-                // 外側のループでinvadersを変更しないように注意が必要です。
-                // 現在の実装では、invaders.forEach 内で invaders を変更していないため問題ありません。
+            // 衝突したインベーダーを一時的に格納する配列
+            const hitInvaders = [];
 
-                // 衝突したインベーダーを一時的に格納する配列
-                const hitInvaders = [];
-
+            projectiles.forEach((p) => {
                 invaders.forEach((invader) => {
                     if (isColliding(p, invader)) {
                          hitInvaders.push(invader);
                     }
                 });
-
-                if (hitInvaders.length > 0) {
-                    // 衝突した最初の弾丸を削除 (複数のインベーダーに同時に当たることは想定しない)
-                    // もし複数のインベーダーに同時に当たる可能性があるなら、弾丸もfilterすべきです。
-                    // 現在は単一の弾丸なのでこれでOK。
-                    projectiles.splice(pIndex, 1); // Remove projectile (safe because only one projectile is processed at a time relative to invaders)
-
-                    hitInvaders.forEach(hitInvader => {
-                        // 衝突したインベーダーを配列から探し、削除
-                        const invaderIndex = invaders.indexOf(hitInvader);
-                        if (invaderIndex !== -1) {
-                             invaders.splice(invaderIndex, 1); // Remove invader
-                            score += 100;
-                            updateScoreDisplay();
-                            if (loadedAudio.invaderHit) {
-                                loadedAudio.invaderHit.play();
-                            }
-                        }
-                    });
-                     // 弾丸が削除されたので、これ以上この弾丸で衝突チェックする必要はない
-                    return; // projectiles.forEach から抜ける
-                }
             });
+
+             // 衝突した弾丸を削除 (インベーダーに当たったもの)
+             projectiles = projectiles.filter(p => {
+                 // この弾丸が hitInvaders リスト内のいずれかのインベーダーと衝突しているかチェック
+                 return !invaders.some(invader => isColliding(p, invader));
+             });
+
+            // 衝突したインベーダーを削除し、スコアを加算
+            const initialInvaderCount = invaders.length;
+            invaders = invaders.filter(invader => {
+                 // このインベーダーが hitInvaders リストに含まれていないかチェック
+                 const wasHit = hitInvaders.includes(invader);
+                 if (wasHit) {
+                    score += 100;
+                    if (loadedAudio.invaderHit) {
+                        loadedAudio.invaderHit.play(); // インベーダーヒット音
+                    }
+                 }
+                 return !wasHit; // 衝突したインベーダーは新しい配列に含めない
+            });
+
+            if (initialInvaderCount !== invaders.length) {
+                 updateScoreDisplay();
+            }
+
 
             // Player projectiles hitting boss
             if (boss && !boss.isExploding) { // ボスが爆発中でなければ判定
-                projectiles.forEach((p, pIndex) => {
-                    if (isColliding(p, boss)) {
-                        projectiles.splice(pIndex, 1); // Remove projectile
-                        boss.hp--;
-                        if (loadedAudio.bossHit) {
-                            loadedAudio.bossHit.play();
-                        }
-                        if (boss.hp <= 0) {
-                            boss.isExploding = true; // ボスを爆発状態にする
-                            boss.explosionTimer = 0;
-                            if (loadedAudio.bossExplosion) {
-                                loadedAudio.bossExplosion.play();
-                            }
-                        }
-                        return; // ボスに当たったらその弾丸のチェックは終了
+                const bossWasHit = projectiles.some(p => isColliding(p, boss));
+
+                if (bossWasHit) {
+                    // ボスに当たった弾丸を全て削除
+                    projectiles = projectiles.filter(p => !isColliding(p, boss));
+
+                    boss.hp--;
+                    if (loadedAudio.bossHit) { // ボスヒット音が必要であれば有効化
+                        loadedAudio.bossHit.play();
                     }
-                });
+                    if (boss.hp <= 0) {
+                        boss.isExploding = true; // ボスを爆発状態にする
+                        boss.explosionTimer = 0;
+                        if (loadedAudio.bossExplosion) { // ボス爆発音が必要であれば有効化
+                            loadedAudio.bossExplosion.play();
+                        }
+                    }
+                }
             }
 
             // Invader projectiles hitting player
-            invaderProjectiles.forEach((ip, ipIndex) => {
-                if (!player.invincible && isColliding(ip, player)) {
-                    invaderProjectiles.splice(ipIndex, 1); // Remove projectile (safe due to single target)
-                    lives--;
-                    updateLivesDisplay();
-                    player.invincible = true;
-                    player.invincibleTimer = 0;
-                    player.blinkTimer = 0;
-                    if (loadedAudio.playerHit) {
-                        loadedAudio.playerHit.play();
-                    }
-                    return; // プレイヤーに当たったらその弾丸のチェックは終了
-                }
+            // プレイヤーに当たった敵弾を一時的に格納する配列
+            const hitPlayerProjectiles = [];
+
+            invaderProjectiles.forEach(ip => {
+                 if (!player.invincible && isColliding(ip, player)) {
+                    hitPlayerProjectiles.push(ip);
+                 }
             });
-            // 複数の敵弾が同時にプレイヤーに当たる可能性がある場合、
-            // invaderProjectiles も filter を使う方がより堅牢です。
-            // 例: invaderProjectiles = invaderProjectiles.filter(ip => !isColliding(ip, player) || player.invincible);
-            // ただし、無敵時間中の衝突判定など、追加ロジックが必要になります。
-            // 今のコードでは、forEach 内で splice しつつ return する方法がシンプルで機能しています。
+
+            if (hitPlayerProjectiles.length > 0) {
+                 // プレイヤーに当たった敵弾を全て削除
+                 invaderProjectiles = invaderProjectiles.filter(ip => {
+                     return !hitPlayerProjectiles.includes(ip);
+                 });
+
+                 // プレイヤーのライフを減らし、無敵時間を開始
+                 lives--;
+                 updateLivesDisplay();
+                 player.invincible = true;
+                 player.invincibleTimer = 0;
+                 player.blinkTimer = 0;
+                 if (loadedAudio.playerHit) { // 自機被弾音が必要であれば有効化
+                    loadedAudio.playerHit.play();
+                 }
+            }
         }
 
         function isColliding(rect1, rect2) {
@@ -1161,11 +1316,9 @@
             } else if (e.key === 'ArrowRight' || e.key === 'd') {
                 player.movingRight = true;
             } else if (e.key === ' ' || e.key === 'w') { // Space or W for shooting
-                // This is handled by touch/mouse for continuous shooting,
-                // but keep for keyboard single shots if desired.
-                // Or disable to force touch/mouse for shooting.
-                // For now, let's use isPointerDown for shooting logic.
-                // If you want keyboard shooting, re-enable the shootProjectile() call here.
+                // このイベントハンドラは、pointerdown/touchstart が設定されているため、
+                // 連続発射はそちらで制御します。キーボードでの単発発射を有効にするなら
+                // 以下の shootProjectile(); のコメントを外してください。
                 // shootProjectile();
             }
         }
@@ -1181,7 +1334,8 @@
         }
 
         function handleTouchStart(e) {
-            if (currentGameState !== GAME_STATE.PLAYING) return;
+            // スタート画面でなければ、タッチ操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING) return;
 
             e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming
 
@@ -1194,7 +1348,8 @@
 
         // ★スマートフォン向けタッチ操作改善: 端での吸着ロジックを追加
         function handleTouchMove(e) {
-            if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
+             // スタート画面でなければ、タッチ操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
 
             e.preventDefault(); // デフォルトのスクロールやズームを防止
 
@@ -1234,24 +1389,28 @@
 
 
         function handleTouchEnd() {
-            if (currentGameState !== GAME_STATE.PLAYING) return;
+             // スタート画面でなければ、タッチ操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING) return;
             isPointerDown = false;
             playerTargetX = null;
         }
 
         function handleMouseDown(e) {
-            if (currentGameState !== GAME_STATE.PLAYING) return;
+             // スタート画面でなければ、マウス操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING) return;
             isPointerDown = true;
             playerTargetX = e.clientX - canvas.getBoundingClientRect().left;
         }
 
         function handleMouseMove(e) {
-            if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
+             // スタート画面でなければ、マウス操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING || !isPointerDown) return;
             playerTargetX = e.clientX - canvas.getBoundingClientRect().left;
         }
 
         function handleMouseUp() {
-            if (currentGameState !== GAME_STATE.PLAYING) return;
+             // スタート画面でなければ、マウス操作を有効にする
+             if (currentGameState !== GAME_STATE.PLAYING) return;
             isPointerDown = false;
             playerTargetX = null;
         }
