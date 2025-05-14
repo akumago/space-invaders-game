@@ -474,12 +474,16 @@
             document.body.addEventListener('mouseup', handleMouseUp);
 
             // Screen orientation lock (非対応デバイスでは警告が出るが、処理は続行)
+            // コンソールに警告が出ていますが、ゲームの起動には影響しません。
             if (screen.orientation && screen.orientation.lock) {
                 screen.orientation.lock('portrait')
                     .then(() => console.log("画面の向きを縦向きにロックしました。"))
                     .catch(error => console.warn("画面の向きをロックできませんでした。:", error.name, error.message));
             }
         }
+
+        // ★loadImage と loadAudio 関数は、loadAssets 関数が呼び出される前に定義されている必要があります。
+        // ★このコードでは、init -> loadAssets の順で呼び出されるため、loadImage/loadAudio は initGameEssentials より後に定義されていても問題ありません。
 
         function loadAssets() {
             showLoadingMessage();
@@ -507,7 +511,51 @@
                 // loadAudio('playerHit', 'audio/player_hit.mp3'), // 自機被弾音 (必要であれば)
             ];
 
-            return Promise.all([...imagePromises, ...audioPromises]);
+            return Promise.all([...imagePromises, ...audioPromises]).then(() => {
+                hideLoadingMessage();
+                currentGameState = GAME_STATE.START_SCREEN;
+                showStartButton(); // これで「TAP TO START」が表示される
+                 // ここで背景動画の再生を開始
+                 if (backgroundVideo) {
+                    backgroundVideo.muted = false; // ミュート解除
+                    backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
+                    backgroundVideo.play().catch(e => console.error("Video playback error:", e));
+                    backgroundVideo.style.display = 'block'; // 動画を表示
+                    backgroundVideo.style.zIndex = -1; // キャンバスより奥に
+                 }
+
+            }).catch(error => {
+                console.error("Error loading assets:", error);
+                loadingMessage.innerText = `Error loading assets: ${error.message || error}. Please check console for details.`;
+                 // アセットロード失敗時、エラーメッセージをユーザーに表示
+                 showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
+                 // エラー時は「Play Again」ボタンを「Retry Loading」などに変更しても良い
+                 const playAgainButton = messageBox.querySelector('button');
+                 playAgainButton.innerText = "Retry Loading";
+                 playAgainButton.onclick = () => {
+                    hideMessageBox();
+                    // ゲーム状態をリセットして再度initを呼び出す
+                    resetGameState();
+                    init();
+                 };
+                 showMessage(`Failed to load game assets. Please check console for details. Error: ${error.message || error}`);
+            });
+        }
+
+        function loadImage(name, src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.src = src;
+                img.onload = () => {
+                    loadedImages[name] = img;
+                    resolve();
+                };
+                // エラーハンドリングを強化
+                img.onerror = (e) => {
+                    console.error(`Failed to load image: ${src}`, e);
+                    reject(new Error(`Failed to load image: ${src}`));
+                };
+            });
         }
 
         function loadAudio(name, src) {
@@ -526,10 +574,50 @@
 
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
-                    onloaderror: (id, error) => reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`))
+                    onloaderror: (id, error) => {
+                         console.error(`Failed to load audio: ${src} (Howler ID: ${id})`, error);
+                         reject(new Error(`Failed to load audio: ${src}`));
+                    }
                 });
+                 // 音声のロードはすぐに始まりますが、ここではHowlオブジェクトのインスタンスが作成されたことをPromiseのresolveとはしません。
+                 // Promiseはonloadまたはonloaderrorで解決/拒否されます。
             });
         }
+
+         // ゲーム状態をリセットするヘルパー関数 (アセットロード失敗時やリトライ用)
+         function resetGameState() {
+            score = 0;
+            lives = 3;
+            currentLevel = 1;
+            invaders = [];
+            projectiles = [];
+            invaderProjectiles = [];
+            boss = null;
+            bossCreatedForThisLevel = false;
+            playerShootCooldown = 0;
+            playerTargetX = null;
+            isPointerDown = false;
+            lastInvaderMoveDownTime = 0;
+            loadedImages = {}; // ロード済みの画像/音声もリセット
+            loadedAudio = {};
+
+             // UIも初期状態に戻す
+            updateScoreDisplay();
+            updateLivesDisplay();
+            updateLevelDisplay();
+
+             // 動画も初期状態に戻す
+            if (backgroundVideo) {
+                 backgroundVideo.style.display = 'none';
+                 backgroundVideo.pause();
+                 backgroundVideo.currentTime = 0;
+                 backgroundVideo.muted = true;
+            }
+            canvas.style.display = 'none'; // キャンバスも非表示に戻す
+            messageBox.style.display = 'none'; // メッセージボックスも隠す
+            startButtonContainer.style.display = 'none'; // スタートボタンも隠す
+         }
+
 
         // --- UI Visibility Functions ---
         function showLoadingMessage() {
@@ -541,6 +629,7 @@
                 backgroundVideo.style.display = 'none';
                 backgroundVideo.pause();
                 backgroundVideo.currentTime = 0;
+                // backgroundVideo.muted = true; // resetGameStateで設定済み
             }
         }
 
@@ -554,13 +643,14 @@
             canvas.style.display = 'none';
 
             if (backgroundVideo) {
-                // スタート画面では動画を表示
-                backgroundVideo.style.display = 'block';
-                backgroundVideo.currentTime = 0; // 動画を最初から再生
-                backgroundVideo.muted = false; // 再生時のみミュートを解除
-                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                backgroundVideo.play().catch(e => console.error("Video playback error on start screen:", e));
-                backgroundVideo.style.zIndex = -1; // キャンバスより奥に
+                // showLoadingMessage/hideStartButtonで動画の表示/非表示を制御しています。
+                // ここでは表示状態を維持します。
+                // backgroundVideo.style.display = 'block'; // showLoadingMessage/loadAssets で設定済み
+                // backgroundVideo.currentTime = 0; // resetGameState で設定済み
+                // backgroundVideo.muted = false; // loadAssets で設定済み
+                // backgroundVideo.volume = Howler.volume(); // loadAssets で設定済み
+                // backgroundVideo.play().catch(e => console.error("Video playback error on start screen:", e)); // loadAssets で設定済み
+                // backgroundVideo.style.zIndex = -1; // loadAssets で設定済み
             }
 
             currentGameState = GAME_STATE.START_SCREEN;
@@ -576,6 +666,7 @@
                 backgroundVideo.style.display = 'none'; // 動画を非表示にする
                 backgroundVideo.pause(); // 動画を一時停止する
                 backgroundVideo.currentTime = 0; // 動画の再生位置をリセット
+                 backgroundVideo.muted = true; // ミュートに戻す
             }
             canvas.style.display = 'block'; // キャンバスを表示
         }
@@ -583,10 +674,30 @@
         function showMessage(msg) {
             messageText.innerText = msg;
             messageBox.style.display = 'block';
+             // メッセージボックス表示中は動画は非表示に保つ (endGameで処理)
+             if (backgroundVideo && currentGameState !== GAME_STATE.START_SCREEN) { // スタート画面以外でメッセージが表示される場合
+                 backgroundVideo.style.display = 'none';
+                 backgroundVideo.pause();
+                 backgroundVideo.currentTime = 0;
+                 backgroundVideo.muted = true;
+             }
         }
 
         function hideMessageBox() {
             messageBox.style.display = 'none';
+             // メッセージボックスが消えたら、ゲーム状態に応じて動画やキャンバスを表示
+             if (currentGameState === GAME_STATE.PLAYING) {
+                 canvas.style.display = 'block';
+                  if (backgroundVideo) {
+                     backgroundVideo.style.display = 'none'; // ゲーム中は動画OFF
+                     backgroundVideo.pause();
+                     backgroundVideo.currentTime = 0;
+                     backgroundVideo.muted = true;
+                  }
+             } else if (currentGameState === GAME_STATE.START_SCREEN) {
+                 showStartButton(); // スタート画面に戻る場合はボタンを表示
+             }
+             // GAME_OVERからのPlay Again -> showStartButton -> init -> startGame で表示が切り替わる
         }
 
         function updateScoreDisplay() {
@@ -602,186 +713,8 @@
         }
 
         // --- Game State Management ---
+        // createInvaders, createBoss, startGame, endGame 関数は上に移動しました
 
-        function createInvaders() {
-            invaders = [];
-            // インベーダー全体の幅を計算
-            // INVADER_COLS 個のインベーダーがあり、間に INVADER_COLS-1 個のスペースがある
-            const totalInvaderBlockWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING_X);
-            // 開始X座標を計算（中央揃え）
-            const startX = (GAME_WIDTH - totalInvaderBlockWidth) / 2;
-            const startY = 80; // インベーダーの初期Y座標は高く保つ
-
-            for (let row = 0; row < INVADER_ROWS; row++) {
-                for (let col = 0; col < INVADER_COLS; col++) {
-                    invaders.push({
-                        x: startX + col * (INVADER_WIDTH + INVADER_SPACING_X),
-                        y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
-                        width: INVADER_WIDTH,
-                        height: INVADER_HEIGHT,
-                        // ★難易度調整: インベーダーのレベルごとの速度増加率を上げる
-                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 7), // 変更: * 5 -> * 7
-                        hp: 1
-                    });
-                }
-            }
-        }
-
-        function createBoss() {
-            boss = {
-                x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // ★変更: 中央に配置
-                y: 30,
-                width: BOSS_WIDTH, // 変更後の幅を使用
-                height: BOSS_HEIGHT, // 変更後の高さを使用
-                // ★難易度調整: ボスのレベルごとの速度増加率を上げる
-                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 13) * 1.5, // 変更: * 10 -> * 13
-                hp: BOSS_HP_PER_LEVEL, // ボスのHPを定数BOSS_HP_PER_LEVELで固定
-                shootTimer: 0,
-                // ★難易度調整: ボスのレベルごとの発射間隔の短縮率を上げる (攻撃頻度UP)
-                // ボスの初期発射間隔を長くし、レベルアップで少しずつ短くする
-                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 18), // 変更: * 15 -> * 18
-                isExploding: false, // ★追加: 爆発中フラグ
-                explosionTimer: 0, // ★追加: 爆発タイマー
-                explosionDuration: 50, // ★追加: 爆発時間 (フレーム単位, 1秒=60フレームとして)
-                originalImage: 'boss', // ★追加: 元の画像キー
-                explosionImage: 'boss_explosion' // ★追加: 爆発用画像キー (loadImageに追加済み)
-            };
-        }
-
-        function startGame(isNewGame) {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-
-            if (isNewGame) {
-                score = 0;
-                lives = 3;
-                currentLevel = 1;
-            } else {
-                // 既存のゲームからの継続の場合、プレイヤーの状態のみリセット
-                player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
-                player.movingLeft = false;
-                player.movingRight = false;
-                player.invincible = false;
-                player.invincibleTimer = 0;
-                player.blinkTimer = 0;
-            }
-
-            boss = null; // ボスは最初に生成しない（インベーダー全滅後に生成）
-            bossCreatedForThisLevel = false; // ★修正: 新しいゲームまたはレベル開始時にリセット
-            projectiles = [];
-            invaderProjectiles = [];
-
-            createInvaders(); // まずインベーダーのみを生成
-
-            updateScoreDisplay();
-            updateLivesDisplay();
-            updateLevelDisplay();
-            hideMessageBox();
-            hideStartButton(); // ゲーム開始時に動画を非表示にしキャンバスを表示
-
-            currentGameState = GAME_STATE.PLAYING;
-            lastTimestamp = performance.now();
-
-            // ★修正：音楽が既に再生中でなければ再生開始、ループを設定
-            if (loadedAudio.backgroundMusic && !loadedAudio.backgroundMusic.playing()) {
-                loadedAudio.backgroundMusic.play();
-                loadedAudio.backgroundMusic.loop(true); // ループを有効にする
-                loadedAudio.backgroundMusic.volume(Howler.volume());
-            }
-
-
-            animationFrameId = requestAnimationFrame(update);
-
-            lastInvaderMoveDownTime = performance.now();
-        }
-
-        function endGame(win) {
-            currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を一時的にGAME_OVERに設定
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
-
-            // ★修正：ゲームオーバー（敗北）の場合のみBGMを停止
-            if (!win) {
-                if (loadedAudio.backgroundMusic) {
-                    loadedAudio.backgroundMusic.stop();
-                }
-            }
-
-
-            // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
-            if (backgroundVideo) {
-                backgroundVideo.style.display = 'none';
-                backgroundVideo.pause();
-                backgroundVideo.currentTime = 0;
-            }
-            canvas.style.display = 'block'; // キャンバスをメッセージボックスの背後に表示
-
-            let message = '';
-            const playAgainButton = messageBox.querySelector('button');
-
-            if (win) {
-                if (currentLevel >= MAX_LEVELS) {
-                    // 最終レベルをクリアした場合
-                    message = `You Win! Final Score: ${score}`;
-                    playAgainButton.innerText = "Play Again";
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                    };
-                    // 最終クリアまたはゲームオーバー時は背景動画を再表示
-                    if (backgroundVideo) {
-                        backgroundVideo.style.display = 'block';
-                        backgroundVideo.currentTime = 0;
-                        backgroundVideo.muted = false;
-                        backgroundVideo.volume = Howler.volume();
-                        backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
-                        backgroundVideo.style.zIndex = -1;
-                    }
-                    canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                    // ★最終クリア時もBGMは停止
-                    if (loadedAudio.backgroundMusic) {
-                        loadedAudio.backgroundMusic.stop();
-                    }
-                } else {
-                    // 中間レベルをクリアした場合
-                    message = `Level ${currentLevel} Clear! Score: ${score}`;
-                    currentLevel++; // 次のレベルへ進む
-                    playAgainButton.innerText = `Next Level (${currentLevel})`;
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        // 次のレベルへ直接移行し、最初のスタート画面に戻らない
-                        startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
-                    };
-                    // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
-                    canvas.style.display = 'block'; // キャンバスは表示したまま
-                    // ★中間レベルクリア時はBGMは停止しない（継続再生）
-                }
-            } else {
-                // ゲームオーバー（敗北）の場合
-                message = `Game Over! Score: ${score}`;
-                playAgainButton.innerText = "Play Again";
-                playAgainButton.onclick = () => {
-                    hideMessageBox();
-                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                };
-                // 最終クリアまたはゲームオーバー時は背景動画を再表示
-                if (backgroundVideo) {
-                    backgroundVideo.style.display = 'block';
-                    backgroundVideo.currentTime = 0;
-                    backgroundVideo.muted = false;
-                    backgroundVideo.volume = Howler.volume();
-                    backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
-                    backgroundVideo.style.zIndex = -1;
-                }
-                canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                // ★ゲームオーバー時はBGM停止（上記で処理済み）
-            }
-            showMessage(message);
-        }
 
         // --- Game Loop ---
 
