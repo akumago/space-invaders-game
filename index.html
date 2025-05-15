@@ -498,6 +498,13 @@
             ];
             const audioPromises = [
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
+                // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
+                loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
+                // loadAudio('invaderHit', 'audio/invader_hit.mp3'),
+                // loadAudio('bossHit', 'audio/boss_hit.mp3'),
+                // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
+                // loadAudio('bossSpawn', 'audio/boss_spawn.mp3'), // ボス出現音 (必要であれば)
+                // loadAudio('playerHit', 'audio/player_hit.mp3'), // 自機被弾音 (必要であれば)
             ];
 
             return Promise.all([...imagePromises, ...audioPromises]);
@@ -837,44 +844,68 @@
             invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT && p.x > -p.width && p.x < GAME_WIDTH + p.width);
 
 
-            // Update invader movement
-            let hitEdgeThisFrame = false; // 今回のフレームで端に到達したかどうかのフラグ
-            invaders.forEach(invader => {
-                invader.x += invader.dx * deltaTime; // deltaTimeを掛けて速度を調整
+            // ★インベーダーグループ全体の移動処理 (端でくっつく問題を改善)
+            if (invaders.length > 0) {
+                let minX = Infinity; // グループ全体の最小X座標
+                let maxX = -Infinity; // グループ全体の最大X座標
 
-                // 端に到達したかの判定
-                if (invader.x + invader.width > GAME_WIDTH || invader.x < 0) {
-                    hitEdgeThisFrame = true;
-                }
-            });
+                // 現在の進行方向を取得 (最初のインベーダーを代表とする)
+                const currentDirection = invaders[0].dx;
 
-            // 端に到達した場合の処理
-            if (hitEdgeThisFrame) {
-                // 左右反転は常に実行
                 invaders.forEach(invader => {
-                    invader.dx *= -1;
-                    // 画面外に出るのを防ぐための微調整
-                    if (invader.x + invader.width > GAME_WIDTH) {
-                        invader.x = GAME_WIDTH - invader.width;
-                    } else if (invader.x < 0) {
-                        invader.x = 0;
-                    }
+                    // deltaTime を掛けて速度を調整
+                    invader.x += invader.dx * deltaTime;
+
+                    // グループ全体の最小・最大X座標を追跡
+                    minX = Math.min(minX, invader.x);
+                    maxX = Math.max(maxX, invader.x + invader.width); // maxXはインベーダーの右端で計算
                 });
 
-                // 下への移動は、一定間隔が経過した場合のみ実行
-                // ここで timestamp を使うのは、フレームレートに依存せず正確な時間で移動させるため
-                const currentTime = performance.now();
-                if (currentTime - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
-                     invaders.forEach(invader => {
-                         invader.y += INVADER_MOVE_DOWN_AMOUNT; // Move down
-                         // ゲームオーバー判定
-                         if (invader.y + invader.height > player.y) {
-                             endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
-                         }
-                     });
-                    lastInvaderMoveDownTime = currentTime; // 移動時間をリセット
+                let reverseDirection = false;
+                // 端にどれだけ食い込んだら方向転換させるかの許容量（ゲーム内単位）
+                // 速度が速いほど、少し手前で判定する必要があるかもしれません。
+                // dx * deltaTime はそのフレームで移動する距離に相当します。
+                const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2); // 例: 1フレームの移動距離の2倍
+
+                // グループ全体の左端が画面左端を超えたか、または右端が画面右端を超えたかチェック
+                // penetrationAmount を考慮して、少し手前で判定
+                if (minX < 0 + penetrationAmount && currentDirection < 0) { // 左に移動中で左端に到達
+                    reverseDirection = true;
+                } else if (maxX > GAME_WIDTH - penetrationAmount && currentDirection > 0) { // 右に移動中で右端に到達
+                     reverseDirection = true;
                 }
+
+
+                if (reverseDirection) {
+                    invaders.forEach(invader => {
+                        invader.dx *= -1; // 全てのインベーダーの水平方向の速度を反転
+
+                        // 方向転換した直後に、端から少し押し戻す（ナッジ）処理
+                        // ナッジ量も penetrationAmount を使うことで、速度に依存して調整されます。
+                        const nudge = (invader.dx > 0 ? penetrationAmount : -penetrationAmount); // 新しい進行方向に応じてナッジ量を調整
+                         invader.x += nudge; // ナッジを適用
+                    });
+
+                     // 方向転換と同時に、インベーダーを下へ移動させる（時間間隔のチェックは維持）
+                    const currentTime = performance.now();
+                    if (currentTime - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
+                         invaders.forEach(invader => {
+                             invader.y += INVADER_MOVE_DOWN_AMOUNT;
+                             // ゲームオーバー判定
+                             if (invader.y + invader.height > player.y) {
+                                 endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
+                             }
+                         });
+                        lastInvaderMoveDownTime = currentTime;
+                    }
+                }
+
+                // 個々のインベーダーが画面外に出ないようにする最終的なクランプ処理（念のため残しておくと安全）
+                invaders.forEach(invader => {
+                     invader.x = Math.max(0, Math.min(invader.x, GAME_WIDTH - invader.width));
+                });
             }
+            // ▲▲▲ インベーダーグループ移動処理ここまで ▲▲▲
 
 
             // Invader shooting
@@ -1104,17 +1135,42 @@
         function checkCollisions() {
             // Player projectiles hitting invaders
             projectiles.forEach((p, pIndex) => {
-                invaders.forEach((invader, invaderIndex) => {
+                // projectilesは衝突後削除されるので、逆順にループすると安全ですが、
+                // filterで処理するのでここではforEachでも問題ありません。
+                // invaderIndexはspliceによって変わる可能性があるため、
+                // 外側のループでinvadersを変更しないように注意が必要です。
+                // 現在の実装では、invaders.forEach 内で invaders を変更していないため問題ありません。
+
+                // 衝突したインベーダーを一時的に格納する配列
+                const hitInvaders = [];
+
+                invaders.forEach((invader) => {
                     if (isColliding(p, invader)) {
-                        projectiles.splice(pIndex, 1); // Remove projectile
-                        invaders.splice(invaderIndex, 1); // Remove invader
-                        score += 100;
-                        updateScoreDisplay();
-                        if (loadedAudio.invaderHit) {
-                            loadedAudio.invaderHit.play();
-                        }
+                         hitInvaders.push(invader);
                     }
                 });
+
+                if (hitInvaders.length > 0) {
+                    // 衝突した最初の弾丸を削除 (複数のインベーダーに同時に当たることは想定しない)
+                    // もし複数のインベーダーに同時に当たる可能性があるなら、弾丸もfilterすべきです。
+                    // 現在は単一の弾丸なのでこれでOK。
+                    projectiles.splice(pIndex, 1); // Remove projectile (safe because only one projectile is processed at a time relative to invaders)
+
+                    hitInvaders.forEach(hitInvader => {
+                        // 衝突したインベーダーを配列から探し、削除
+                        const invaderIndex = invaders.indexOf(hitInvader);
+                        if (invaderIndex !== -1) {
+                             invaders.splice(invaderIndex, 1); // Remove invader
+                            score += 100;
+                            updateScoreDisplay();
+                            if (loadedAudio.invaderHit) {
+                                loadedAudio.invaderHit.play();
+                            }
+                        }
+                    });
+                     // 弾丸が削除されたので、これ以上この弾丸で衝突チェックする必要はない
+                    return; // projectiles.forEach から抜ける
+                }
             });
 
             // Player projectiles hitting boss
@@ -1133,6 +1189,7 @@
                                 loadedAudio.bossExplosion.play();
                             }
                         }
+                        return; // ボスに当たったらその弾丸のチェックは終了
                     }
                 });
             }
@@ -1140,7 +1197,7 @@
             // Invader projectiles hitting player
             invaderProjectiles.forEach((ip, ipIndex) => {
                 if (!player.invincible && isColliding(ip, player)) {
-                    invaderProjectiles.splice(ipIndex, 1); // Remove projectile
+                    invaderProjectiles.splice(ipIndex, 1); // Remove projectile (safe due to single target)
                     lives--;
                     updateLivesDisplay();
                     player.invincible = true;
@@ -1149,8 +1206,14 @@
                     if (loadedAudio.playerHit) {
                         loadedAudio.playerHit.play();
                     }
+                    return; // プレイヤーに当たったらその弾丸のチェックは終了
                 }
             });
+            // 複数の敵弾が同時にプレイヤーに当たる可能性がある場合、
+            // invaderProjectiles も filter を使う方がより堅牢です。
+            // 例: invaderProjectiles = invaderProjectiles.filter(ip => !isColliding(ip, player) || player.invincible);
+            // ただし、無敵時間中の衝突判定など、追加ロジックが必要になります。
+            // 今のコードでは、forEach 内で splice しつつ return する方法がシンプルで機能しています。
         }
 
         function isColliding(rect1, rect2) {
@@ -1266,16 +1329,19 @@
         }
 
         function shootProjectile() {
-            projectiles.push({
-                x: player.x + player.width / 2 - 2.5,
-                y: player.y,
-                width: 5,
-                height: 10
-            });
-            playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
-            if (loadedAudio.shoot) {
-                loadedAudio.shoot.play();
-            }
+            // 自機が無敵状態でない、または無敵状態でも発射を許可する場合
+            // if (!player.invincible) { // 無敵中は撃てなくするならこのチェックを追加
+                 projectiles.push({
+                     x: player.x + player.width / 2 - 2.5,
+                     y: player.y,
+                     width: 5,
+                     height: 10
+                 });
+                 playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                 if (loadedAudio.shoot) {
+                     loadedAudio.shoot.play();
+                 }
+            // } // 無敵中は撃てなくするならこの閉じ括弧が必要
         }
 
 
