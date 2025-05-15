@@ -33,42 +33,39 @@
         /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */
         #gameContainer {
             position: relative; /* 子要素（canvas, video）の基準 */
-            /* PCでの表示サイズとアスペクト比維持の調整 */
-            width: 100%; /* 最初は親要素の幅いっぱいに設定 */
-            max-width: 420px; /* PCなどでは最大幅を420pxに制限 */
-            /* 高さは幅に合わせてアスペクト比を維持。画面の高さを超えないように制限 */
-            height: auto; /* 高さは内容に合わせるか、下でcalcで指定 */
-            aspect-ratio: 9 / 19.5; /* 幅と高さの比率を固定 (GAME_WIDTH / GAME_HEIGHT) */
-            max-height: 100vh; /* 画面の高さを超えないように制限 */
+            /* PCでの表示サイズとアスペクト比維持、画面へのフィット感を調整 */
+            /* 画面の幅と高さの比率から、ゲームのアスペクト比(9:19.5)に合う最大のサイズを計算 */
+            width: min(100vw, calc(100vh * (9 / 19.5))); /* 画面幅の100% と、画面高さからゲーム比率で計算した幅 の小さい方 */
+            height: min(100vh, calc(100vw * (19.5 / 9))); /* 画面高さの100% と、画面幅からゲーム比率で計算した高さ の小さい方 */
+
+            max-width: 100vw; /* 念のため画面幅の100%を超えない制限 */
+            max-height: 100vh; /* 念のため画面高さの100%を超えない制限 */
+             /* aspect-ratio は width/height で計算されるため、ここでは特に指定しない */
 
 
             overflow: hidden; /* はみ出たコンテンツを隠す */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
             z-index: 1; /* 他のUIより手前 */
-            margin: auto; /* 水平方向の中央配置 */
+            margin: auto; /* 水平方向の中央配置（Flexboxと組み合わせ） */
             box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */
 
              /* Flexアイテムとしてのサイズ調整（bodyのFlexboxに影響される） */
-             flex-shrink: 0; /* 縮小しない */
-             flex-grow: 0; /* 拡大しない */
+             flex-shrink: 1; /* 必要に応じて縮小を許可 */
+             flex-grow: 0; /* 拡大はしない */
 
-
-             /* PCで高さが足りない場合に上下中央に表示されるように調整 */
-             /* align-self: center; /* 親がflexの場合に自身を中央揃え */
-             /* body に align-items: center; が設定されているため、通常これは不要 */
-
-
+             /* body に align-items: center; が設定されているため、垂直方向の中央配置は親によって行われる */
         }
 
         /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */
+        /* スマートフォン用は前回と同じ設定で維持 */
         @media (max-width: 768px) {
             #gameContainer {
                 width: min(100vw, calc(100vh * (9 / 19.5))); /* 画面幅または画面高さから計算した幅の小さい方 */
                 height: min(calc(100vw * (19.5 / 9)), 100vh); /* 画面高さまたは画面幅から計算した高さの小さい方 */
-                 max-width: unset; /* スマホサイズでは最大幅を解除 */
-                 max-height: unset; /* スマホサイズでは最大高さを解除 */
-                 aspect-ratio: unset; /* スマホサイズでは CSS による aspect-ratio は解除 */
+                 max-width: unset; /* 最大幅の制限を解除 */
+                 max-height: unset; /* 最大高さの制限を解除 */
+                 /* aspect-ratio: unset; /* スマホサイズでは CSS による aspect-ratio は解除 */
                 /* safe-area-inset は必要に応じて追加してください。
                 padding-top: env(safe-area-inset-top);
                 padding-bottom: env(safe-area-inset-bottom);
@@ -156,6 +153,7 @@
             border-radius: 5px;
             transition: background-color 0.3s, color 0.3s, transform 0.1s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            white-space: nowrap; /* ボタン内のテキストが改行されないように */
         }
         #messageBox button:hover {
             background-color: #0a0;
@@ -171,7 +169,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            display: flex;
+            display: flex !important; /* ★強制的に表示★ */
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -180,7 +178,7 @@
             padding: 30px 40px;
             border-radius: 15px;
             box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
-            z-index: 2; /* ゲーム画面より手前 */
+            z-index: 10 !important; /* ★他の要素より手前に強制表示★ */
             width: 80%; /* 適度な幅に */
             max-width: 400px; /* 最大幅 */
             box-sizing: border-box; /* パディングを含めて幅を計算 */
@@ -286,7 +284,7 @@
         <div id="score">Score: 0</div>
         <div id="lives">Lives: 3</div>
         <div id="level">Level: 1</div>
-    </div>
+        </div>
 
     <div id="messageBox">
         <p id="message"></p>
@@ -302,7 +300,6 @@
             <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.5">
         </div>
     </div>
-
     <script>
         // ★★★ このscriptタグの中身全てを、お手元のscriptタグの中身全てと置き換えてください ★★★
 
@@ -567,10 +564,19 @@
                     console.log("--- Start button click handler finished ---"); // Debug Log - Added at end
                 });
 
-                // アセットロード完了後、最初のゲームループは startGame() または startFinalBossBattle() に任せるのが適切です。
-                // animationFrameId = requestAnimationFrame(update); // ここでのゲームループ開始は不要
+                // デバッグ用: ロード完了後、スタートボタンコンテナを強制的に表示する (HTML構造修正後は不要かもしれませんが念のため残します)
+                // window.addEventListener('load', () => {
+                //     const startButtonContainer = document.getElementById('startButtonContainer');
+                //     if (startButtonContainer) {
+                //         console.log("Attempting to forcefully display start button container after window load."); // Debug Log
+                //         startButtonContainer.style.display = 'flex';
+                //         startButtonContainer.style.zIndex = '10'; // 他の要素より手前に
+                //         console.log(`Start button container display set to ${startButtonContainer.style.display}, zIndex set to ${startButtonContainer.style.zIndex}`); // Debug Log
+                //     } else {
+                //         console.warn("startButtonContainer element not found on window load."); // Debug Log
+                //     }
+                // });
 
-                console.log("Game initialized. State: START_SCREEN. Ready to show start button."); // Debug Log
 
             }).catch(error => {
                 console.error("Error loading assets:", error);
@@ -603,7 +609,6 @@
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 最初は隠す
                 // backgroundVideo.muted = true; // HTMLからは削除、JSで制御
-                // backgroundVideo.play().catch(e => console.log("Video autoplay blocked:", e)); // 自動再生はブロックされる可能性が高い
                  console.log("Background video element found."); // Debug Log
             } else {
                  console.warn("Background video element not found."); // Debug Log
@@ -678,7 +683,6 @@
                 // loadAudio('bossHit', 'audio/boss_hit.mp3'),
                 // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
                 // loadAudio('bossSpawn', 'audio/boss_spawn.mp3'), // ボス出現音 (必要であれば)
-                // loadAudio('playerHit', 'audio/player_hit.mp3'), // 自機被弾音 (必要であれば)
 
                 // ★★★ ここにあなたが指定した最終ボス音楽を追加（あなたのコードから）★★★
                 loadAudio('finalBossMusic', 'audio/boss_bgm.mp3').then(sound => finalBossMusic = sound), // ロード後、グローバル変数に設定
@@ -1833,6 +1837,7 @@
              // animationFrameId = requestAnimationFrame(update); // ここでのゲームループ開始は不要
 
              console.log("Game initialized. State: START_SCREEN. Ready to show start button."); // Debug Log
+
         }
     </script>
 </body>
