@@ -485,97 +485,20 @@
                 });
 
                 // スタートボタンのクリックイベントリスナー
+                // ★クリックハンドラーの中身を一時的にシンプルにする★
                 // async は削除
-                // オーディオコンテキストアンロックと動画再生はここで行うのが最も確実
                 startButton.addEventListener('click', () => { // async を削除
-                    console.log("--- Start button click handler started ---"); // Debug Log - Added at start
-                    console.log(`Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}, Audio unlocked: ${audioUnlocked}`); // Debug Log
+                    console.log("--- Start button clicked! (Simplified handler) ---"); // Debug Log - Added at start
+                    // ★★★ このログが表示されるかを確認してください！★★★
 
-                    // ユーザー操作（ボタンクリック）が発生したので、オーディオコンテキストのアンロックを試みる
-                    unlockAudio();
-                    console.log("unlockAudio() called."); // Debug Log
-
-                    // Howler.js がまだロードされていない場合など、Howlerが使用できない可能性も考慮
-                    if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'suspended') {
-                         // ボタンクリックはユーザー操作なので、ここで audio context を resume するのが最も確実
-                         Howler.ctx.resume().then(() => {
-                              console.log("Audio context resumed by button click."); // Debug Log
-                              audioUnlocked = true;
-                         }).catch(e => console.error("Audio context resume failed on button click:", e));
-                    } else if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'running') {
-                         console.log("Audio context is already running."); // Debug Log
-                         audioUnlocked = true;
-                    } else {
-                         console.log("Audio context is not applicable or Howler not ready."); // Debug Log
-                    }
-
-
-                    if (currentGameState === GAME_STATE.START_SCREEN) {
-                        console.log(`Inside START_SCREEN state check. isInitialStartTapDone: ${isInitialStartTapDone}`); // Debug Log - Added
-                        if (!isInitialStartTapDone) {
-                            // 1回目のタップ：動画再生とボタンテキスト変更
-                            console.log("First tap detected (TAP TO START)."); // Debug Log
-
-                            if (backgroundVideo) {
-                                console.log("Background video element found. Attempting to unmute and set volume."); // Debug Log - Added
-                                backgroundVideo.muted = false; // ミュート解除を試みる
-                                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                                console.log(`Video muted set to ${backgroundVideo.muted}, Volume set to ${backgroundVideo.volume}`); // Debug Log - Added
-
-                                console.log("Attempting video play()."); // Debug Log - Added
-                                // 動画再生を試みる。play()はPromiseを返す
-                                // await は削除し、.then() と .catch() で非同期に処理結果を受け取る
-                                backgroundVideo.play().then(() => {
-                                     // 再生が正常に始まった場合の処理
-                                     console.log("Video playback started successfully."); // Debug Log
-                                }).catch(e => {
-                                     // 再生がブロックされたりエラーが発生した場合の処理
-                                     console.warn("Video playback blocked or failed:", e.message); // Debug Log
-                                    // ★動画再生に失敗しても、ゲーム開始に進めるようにフラグは立ててボタンテキストは変更する
-                                });
-                                console.log("Video play attempt initiated."); // Debug Log
-
-
-                            } else {
-                                 console.warn("Background video element not found during first tap."); // Debug Log
-                                // ★動画要素がない場合でも、ゲーム開始に進めるようにフラグは立ててボタンテキストは変更する
-                            }
-
-                            // ★動画再生の成否にかかわらず、最初のタップで必ずフラグを立て、ボタンテキストを変更する
-                            console.log("Executing post-video-play-attempt logic (setting flag and button text)."); // Debug Log - Added
-                            isInitialStartTapDone = true;
-                            startButton.innerText = "START GAME";
-                            console.log("isInitialStartTapDone set to true, button text set to START GAME."); // Debug Log - Added
-                            console.log("First tap logic complete."); // Debug Log - Added
-
-
-                        } else {
-                            // 2回目のタップ：ゲーム開始
-                             console.log("Second tap detected (START GAME). Attempting to start game."); // Debug Log
-                            // ★2回目のタップであれば、動画再生の成否にかかわらずゲーム開始関数を呼び出す
-                            startGame(true); // 新しいゲームを開始
-                            console.log("startGame(true) called."); // Debug Log - Added
-                            // hideStartButton() は startGame 内で呼ばれる
-
-                        }
-                    } else {
-                         console.log(`Start button clicked in state: ${currentGameState}. No action taken.`); // Debug Log
-                    }
-                    console.log("--- Start button click handler finished ---"); // Debug Log - Added at end
+                    // ★元のクリックハンドラーの中身は一時的にコメントアウトするか削除してください★
+                    // console.log(`Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}, Audio unlocked: ${audioUnlocked}`); // Debug Log
+                    // unlockAudio();
+                    // if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'suspended') { ... }
+                    // if (currentGameState === GAME_STATE.START_SCREEN) { ... }
+                    // console.log("--- Start button click handler finished ---"); // Debug Log - Added at end
                 });
-
-                // デバッグ用: ロード完了後、スタートボタンコンテナを強制的に表示する (HTML構造修正後は不要かもしれませんが念のため残します)
-                // window.addEventListener('load', () => {
-                //     const startButtonContainer = document.getElementById('startButtonContainer');
-                //     if (startButtonContainer) {
-                //         console.log("Attempting to forcefully display start button container after window load."); // Debug Log
-                //         startButtonContainer.style.display = 'flex';
-                //         startButtonContainer.style.zIndex = '10'; // 他の要素より手前に
-                //         console.log(`Start button container display set to ${startButtonContainer.style.display}, zIndex set to ${startButtonContainer.style.zIndex}`); // Debug Log
-                //     } else {
-                //         console.warn("startButtonContainer element not found on window load."); // Debug Log
-                //     }
-                // });
+                 console.log("Attempted to add click event listener to startButton."); // Debug Log - Added after listener registration
 
 
             }).catch(error => {
@@ -586,6 +509,7 @@
 
         // Sets up canvas, player object, and event listeners once
         function initGameEssentials() {
+            console.log("Initializing game essentials..."); // Debug Log - Added
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
             // CanvasのサイズはCSSに追従するが、描画コンテキストの解像度として設定
@@ -600,7 +524,11 @@
             messageBox = document.getElementById('messageBox');
             messageText = messageBox.querySelector('p');
             startButtonContainer = document.getElementById('startButtonContainer');
+
+            // ★スタートボタン要素を取得し、取得できたかログを確認★
             startButton = document.getElementById('startButton');
+            console.log("Attempted to get startButton element:", startButton); // Debug Log - Added
+
             loadingMessage = document.getElementById('loadingMessage');
             volumeSlider = document.getElementById('volumeSlider'); // スライダー要素を取得
 
@@ -656,187 +584,46 @@
              console.log("Game essentials initialized."); // Debug Log
         }
 
-        function loadAssets() {
-            showLoadingMessage();
-            const imagePromises = [
-                // プレイヤーの画像
-                loadImage('player', 'image/invader3.png'),
+        // --- Game State Management ---
 
-                // インベーダーの画像
-                loadImage('invader', 'image/invader1.png'),
+        function createInvaders() {
+            invaders = [];
+            // インベーダー全体の幅を計算
+            const totalInvaderBlockWidth = (INVADER_COLS * INVADER_WIDTH) + ((INVADER_COLS - 1) * INVADER_SPACING_X);
+            // 開始X座標を計算（中央揃え）
+            const startX = (GAME_WIDTH - totalInvaderBlockWidth) / 2;
+            const startY = 80; // インベーダーの初期Y座標は高く保つ
 
-                // ボスの画像
-                loadImage('boss', 'image/invader2.png'), // 通常ボス画像
-
-                // ★追加: ボス爆発の画像 (通常ボスと最終ボス共通で使用)
-                loadImage('boss_explosion', 'image/explosion.png'),
-
-                // ★★★ ここにあなたが指定した最終ボス画像を追加（あなたのコードから）★★★
-                loadImage('finalBoss', 'image/final_boss.png'), // ★ あなたのファイルパスに合わせて修正してください ★
-            ];
-            const audioPromises = [
-                // loadAudio 関数の Promise が Howl オブジェクトを解決するように修正済み
-                loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3').then(sound => backgroundMusic = sound), // ロード後、グローバル変数に設定
-                // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
-                loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
-                // loadAudio('invaderHit', 'audio/invader_hit.mp3'),
-                // loadAudio('bossHit', 'audio/boss_hit.mp3'),
-                // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
-                // loadAudio('bossSpawn', 'audio/boss_spawn.mp3'), // ボス出現音 (必要であれば)
-
-                // ★★★ ここにあなたが指定した最終ボス音楽を追加（あなたのコードから）★★★
-                loadAudio('finalBossMusic', 'audio/boss_bgm.mp3').then(sound => finalBossMusic = sound), // ロード後、グローバル変数に設定
-            ];
-            console.log("Loading assets..."); // Debug Log
-            return Promise.all([...imagePromises, ...audioPromises]);
-        }
-
-        function loadImage(name, src) {
-            return new Promise((resolve, reject) => {
-                const img = new Image();
-                img.src = src;
-                img.onload = () => {
-                    loadedImages[name] = img;
-                     console.log(`Loaded image: ${src}`); // Debug Log
-                    resolve();
-                };
-                img.onerror = (e) => {
-                     console.error(`Failed to load image: ${src}`, e); // Debug Log
-                    // 画像ロード失敗時はエラーログを出すが、ゲーム続行のため reject はしない
-                    // reject(new Error(`Failed to load image: ${src} (${e.message || e})`));
-                     console.warn(`Image load failed for ${src}, game might not display correctly.`); // Debug Log
-                     resolve(); // エラーでもresolveして他のアセットロードを止めない
+            for (let row = 0; row < INVADER_ROWS; row++) {
+                for (let col = 0; col < INVADER_COLS; col++) {
+                    invaders.push({
+                        x: startX + col * (INVADER_WIDTH + INVADER_SPACING_X),
+                        y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
+                        width: INVADER_WIDTH,
+                        height: INVADER_HEIGHT,
+                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 7),
+                        hp: 1
+                    });
                 }
-            });
-        }
-
-        function loadAudio(name, src) {
-            return new Promise((resolve, reject) => {
-                 // Howler がまだロードされていない場合はエラーを防ぐ
-                 if (typeof Howler === 'undefined') {
-                      console.error(`Howler.js not available when trying to load audio: ${src}`); // Debug Log
-                      // reject(new Error("Howler.js not available")); // エラーにする場合はこちら
-                      console.warn(`Howler.js not available, audio load skipped for ${src}.`); // Debug Log
-                      resolve(null); // null を解決して処理を続ける
-                      return;
-                 }
-                const sound = new Howl({
-                    src: [src],
-                    volume: Howler.volume(),
-                    onload: () => {
-                        loadedAudio[name] = sound; // loadedAudio オブジェクトにも追加
-                        if (name === 'shoot') { // もし読み込んだ音がミサイル音(shoot)なら
-                             sound.volume(Howler.volume() * 0.05); // その音の個別音量を設定 (調整可能) - グローバル音量に連動
-                         }
-                         // ★ finalBossMusic や backgroundMusic もグローバル音量に連動させる場合
-                         if (name === 'finalBossMusic' || name === 'backgroundMusic') {
-                             sound.volume(Howler.volume());
-                         }
-                         console.log(`Loaded audio: ${src}`); // Debug Log
-                        resolve(sound); // ロードした Howl オブジェクトを解決する Promise に渡す
-                    },
-                    onloaderror: (id, error) => {
-                         console.error(`Failed to load audio: ${src} (ID: ${id})`, error); // Debug Log
-                        // 音声ロード失敗時もゲーム続行のため reject はしない
-                        // reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`));
-                         console.warn(`Audio load failed for ${src}, game music/sound might be missing.`); // Debug Log
-                         resolve(null); // null を解決して処理を続ける
-                    }
-                });
-            });
-        }
-
-        // --- UI Visibility Functions ---
-        function showLoadingMessage() {
-            loadingMessage.style.display = 'block';
-            startButtonContainer.style.display = 'none';
-            messageBox.style.display = 'none';
-            canvas.style.display = 'none';
-            if (backgroundVideo) {
-                backgroundVideo.style.display = 'none';
-                // backgroundVideo.muted = true; // HTMLからは削除、JSで制御
-                 console.log("Loading message shown."); // Debug Log
             }
         }
 
-        function hideLoadingMessage() {
-            loadingMessage.style.display = 'none';
-             console.log("Loading message hidden."); // Debug Log
-        }
-
-        function showStartButton() {
-            startButtonContainer.style.display = 'flex';
-            messageBox.style.display = 'none';
-            canvas.style.display = 'none'; // スタート画面ではキャンバスは非表示
-
-            if (backgroundVideo) {
-                // スタート画面では動画を表示
-                backgroundVideo.style.display = 'block';
-                backgroundVideo.currentTime = 0; // 動画を最初から再生
-                backgroundVideo.muted = true; // 動画の音声は最初のタップで解除（最初は強制ミュート）
-                backgroundVideo.volume = Howler.volume(); // 音量設定は行う (mutedなので意味ないが念のため)
-                backgroundVideo.style.zIndex = -1; // キャンバスより奥に
-
-                 // 自動再生を試みる（多くのブラウザでブロックされるが、失敗してもエラーにならないように）
-                 // startButton のクリックイベント内で play() するように変更済みなので、ここでは自動再生の試みは不要
-                 backgroundVideo.play().then(() => {
-                      console.log("Video autoplay attempt successful."); // Debug Log (稀)
-                 }).catch(e => {
-                      console.log("Video autoplay blocked or failed as expected:", e.message); // Debug Log (一般的)
-                     // 自動再生が失敗しても、ボタンクリックでの再生を待つ
-                 });
-
-                 console.log("Start button shown. Video element ready for playback on tap."); // Debug Log
-            } else {
-                 console.warn("Background video element not found for showing start button."); // Debug Log
-            }
-
-            currentGameState = GAME_STATE.START_SCREEN;
-            startButton.innerText = "TAP TO START"; // 最初のテキスト
-            isInitialStartTapDone = false; // 最初のタップフラグをリセット
-        }
-
-        function hideStartButton() {
-             console.log("Hiding start button container."); // Debug Log
-            startButtonContainer.style.display = 'none';
-
-            // ゲーム開始時に背景動画を非表示にする
-            if (backgroundVideo) {
-                backgroundVideo.style.display = 'none'; // 動画を非表示にする
-                backgroundVideo.pause(); // 動画を一時停止する
-                backgroundVideo.currentTime = 0; // 動画の再生位置をリセット
-                backgroundVideo.muted = true; // ミュートに戻す（念のため）
-                 console.log("Background video hidden and paused."); // Debug Log
-            } else {
-                 console.warn("Background video element not found for hiding start button."); // Debug Log
-            }
-            canvas.style.display = 'block'; // キャンバスを表示
-             console.log("Game canvas shown."); // Debug Log
-        }
-
-        function showMessage(msg) {
-            messageText.innerText = msg;
-            messageBox.style.display = 'block';
-             console.log(`Showing message: ${msg}`); // Debug Log
-             // メッセージ表示中はゲーム画面（キャンバス/動画）はそのままにしておく
-        }
-
-        function hideMessageBox() {
-            messageBox.style.display = 'none';
-             console.log("Hiding message box."); // Debug Log
-             // メッセージボックスを隠してもゲーム画面はそのまま
-        }
-
-        function updateScoreDisplay() {
-            scoreDisplay.innerText = `Score: ${score}`;
-        }
-
-        function updateLivesDisplay() {
-            livesDisplay.innerText = `Lives: ${lives}`;
-        }
-
-        function updateLevelDisplay() {
-            levelDisplay.innerText = `Level: ${currentLevel}`;
+        function createBoss() {
+            boss = {
+                x: GAME_WIDTH / 2 - BOSS_WIDTH / 2,
+                y: 30,
+                width: BOSS_WIDTH,
+                height: BOSS_HEIGHT,
+                dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 13) * 1.5,
+                hp: BOSS_HP_PER_LEVEL,
+                shootTimer: 0,
+                shootInterval: Math.max(60, 120 - (currentLevel - 1) * 18),
+                isExploding: false,
+                explosionTimer: 0,
+                explosionDuration: 50,
+                originalImage: 'boss',
+                explosionImage: 'boss_explosion'
+            };
         }
 
         // ★★★ あなたが定義した startFinalBossBattle 関数をここに追加 ★★★
@@ -1779,14 +1566,8 @@
         }
 
         function handleMouseUp() {
-             // ゲームプレイ中または最終ボス戦中以外の場合の処理
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) {
-                  // スタート画面でのマウスアップは startButton のイベントリスナーで処理されるのが望ましい
-                 if (currentGameState === GAME_STATE.START_SCREEN) return;
-                 // それ以外の状態（ロード中、ゲームオーバー画面など）では入力を無視
-                 return;
-            }
-
+             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
+            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
             isPointerDown = false;
             playerTargetX = null;
         }
@@ -1818,27 +1599,6 @@
 
         // Call init when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', init);
-
-        // init Game - 最初のロードが完了したら呼ばれる
-        async function init() {
-             console.log("Initializing game..."); // Debug Log
-             initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
-             // Howler.js アンロックは最初のユーザー操作で行うように変更済み
-
-             await loadAssets(); // アセットのロード完了を待つ
-
-             // アセットロード完了後、スタート画面を表示
-             hideLoadingMessage(); // ローディングメッセージを隠す
-             currentGameState = GAME_STATE.START_SCREEN; // 状態をスタート画面に
-             showStartButton(); // スタートボタンコンテナを表示
-
-             // BGMやゲームループは startGame() で開始されます。
-             // animationFrameId は startGame() または startFinalBossBattle() で初めてリクエストするのが適切です。
-             // animationFrameId = requestAnimationFrame(update); // ここでのゲームループ開始は不要
-
-             console.log("Game initialized. State: START_SCREEN. Ready to show start button."); // Debug Log
-
-        }
     </script>
 </body>
 </html>
