@@ -453,9 +453,18 @@ function shootProjectile() {
     });
     playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
 
+    // ★ここをtry-catchで囲む★
     if (loadedAudio.shoot) {
-        loadedAudio.shoot.play();
+        try {
+            loadedAudio.shoot.play();
+            // console.log("Shoot sound played."); // デバッグ用
+        } catch (e) {
+            console.warn("Shoot sound playback failed:", e); // エラーを警告
+        }
+    } else {
+        console.warn("Shoot sound object not available."); // デバッグ用：loadedAudio.shoot自体が無い場合
     }
+    // ★ここまで★
 }
 function loadAssets() {
     const imagePromises = [
