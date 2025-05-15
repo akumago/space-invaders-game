@@ -288,6 +288,8 @@
         const PLAYER_PROJECTILE_SPEED = 10;
         const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
         const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
+        const GAME_WIDTH = 420;
+const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9);
 
         // ★難易度調整: 敵の弾速を少し上げる
         const ENEMY_PROJECTILE_SPEED = 5; // 変更: 4 -> 5
@@ -313,6 +315,12 @@
         // ボスの放射状ミサイル関連の定数
         const BOSS_RADIAL_PROJECTILE_COUNT_BASE = 3; // ボスの初期放射状ミサイル数
         const BOSS_RADIAL_SPREAD_ANGLE = Math.PI * 0.75; // 放射状に広がる角度（ラジアン、例: 135度）
+        
+// ★追加★ 最終ボス関連の定数
+const FINAL_BOSS_WIDTH = 200;
+const FINAL_BOSS_HEIGHT = 150;
+        // ... ここに残りの新しい定数を貼り付け ...
+const FINAL_BOSS_RADIAL_PROJECTILE_COUNT = 5;
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -657,6 +665,23 @@
                 explosionImage: 'boss_explosion'
             };
         }
+
+
+
+    function createFinalBoss() {
+    // ...
+}
+
+// ★追加★ 最終ボス戦を開始する関数
+function startFinalBossBattle() {
+    // ... 前回の回答の startFinalBossBattle 関数のコードを貼り付け ...
+}
+
+function startGame(isNewGame) {
+    // ...
+}
+// ... 他の関数 ...
+  
 
         function startGame(isNewGame) {
             if (animationFrameId) {
