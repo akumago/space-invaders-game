@@ -33,8 +33,13 @@
         /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */
         #gameContainer {
             position: relative; /* 子要素（canvas, video）の基準 */
-            width: 420px; /* GAME_WIDTHと同期 */
-            height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
+            /* PCでの表示サイズとアスペクト比維持の調整 */
+            width: 100%; /* 最初は親要素の幅いっぱいに設定 */
+            max-width: 420px; /* PCなどでは最大幅を420pxに制限 */
+            /* 高さは幅に合わせてJSで計算するか、calcで指定 */
+            height: calc(min(100vw, 420px) * (19.5 / 9)); /* 画面幅または420pxの小さい方に合わせて高さを計算 */
+             max-height: 100vh; /* 画面の高さも超えないように制限 */
+
             overflow: hidden; /* はみ出たコンテンツを隠す */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
@@ -42,26 +47,18 @@
             margin: auto; /* 画面中央に配置 */
             box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */
 
-            /* ★PCでのスケールと中央配置をより確実に */
-            max-width: 420px; /* PCなどでは最大幅を固定 */
-            max-height: calc(420px * (19.5 / 9)); /* PCなどでは最大高さを固定 */
-            /* アスペクト比を維持しつつ、画面に収まるように調整 */
-             /* width: min(100%, 420px); */ /* 画面幅の100%または420pxの小さい方 */
-             /* height: min(calc(100% * (19.5 / 9)), calc(420px * (19.5 / 9))); */ /* 画面高さの計算 */
-
-
-             /* スマートフォン用のメディアクエリはこの下にあります */
+             /* PCで高さが足りない場合に上下中央に表示されるように調整 */
+             align-self: center;
         }
 
         /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */
         @media (max-width: 768px) {
             #gameContainer {
-                width: min(100vw, calc(100vh * (9 / 19.5)));
-                height: min(calc(100vw * (19.5 / 9)), 100vh);
+                width: min(100vw, calc(100vh * (9 / 19.5))); /* 画面幅または画面高さから計算した幅の小さい方 */
+                height: min(calc(100vw * (19.5 / 9)), 100vh); /* 画面高さまたは画面幅から計算した高さの小さい方 */
                  max-width: unset; /* スマホサイズでは最大幅を解除 */
                  max-height: unset; /* スマホサイズでは最大高さを解除 */
                 /* safe-area-inset は必要に応じて追加してください。
-                   現状のコードにはないので今回は含めません。
                 padding-top: env(safe-area-inset-top);
                 padding-bottom: env(safe-area-inset-bottom);
                 padding-left: env(safe-area-inset-left);
@@ -145,8 +142,9 @@
             font-weight: bold;
             cursor: pointer;
             border-radius: 5px;
-            transition: background-color 0.3s, color 0.3s;
+            transition: background-color 0.3s, color 0.3s, transform 0.1s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            white-space: nowrap; /* ボタン内のテキストが改行されないように */
         }
         #messageBox button:hover {
             background-color: #0a0;
@@ -388,8 +386,12 @@
         // initGameEssentials() の前に Howler.js のオーディオコンテキストをアンロックする処理を追加 (一部ブラウザで必要)
         // ユーザー操作（最初のタップなど）によって実行される必要がある
         function unlockAudio() {
-             if (typeof Howler === 'undefined' || !Howler.usingWebAudio) {
-                  // Howler.js が利用できないか、Web Audio API を使用していない場合はスキップ
+             // Howler.js がロードされているか確認
+             if (typeof Howler === 'undefined') {
+                  console.log("Howler.js is not loaded yet, unlock skipped."); // Debug Log
+                  return;
+             }
+             if (!Howler.usingWebAudio) {
                   console.log("Howler.js not using Web Audio API, unlock skipped."); // Debug Log
                   return;
              }
@@ -401,14 +403,13 @@
                        console.log("Audio context resumed successfully."); // Debug Log
                        // 再開後にボリュームが正しく設定されているか確認
                        Howler.volume(parseFloat(volumeSlider.value) || 0.5);
-                       if (backgroundMusic && !backgroundMusic.playing() && currentGameState === GAME_STATE.PLAYING) {
-                            // もしゲームプレイ中なのにBGMが停止していたら再生を試みる（通常はstartGameで処理されるが念のため）
-                             backgroundMusic.play().catch(e => console.error("BGM autoplay after unlock failed:", e));
+                       // BGMが再生すべき状態なら再生を試みる（ゲーム状態を確認）
+                       if (currentGameState === GAME_STATE.PLAYING && backgroundMusic && !backgroundMusic.playing()) {
+                            backgroundMusic.play().catch(e => console.error("BGM autoplay after unlock failed:", e));
+                       } else if (currentGameState === GAME_STATE.FINAL_BOSS && finalBossMusic && !finalBossMusic.playing()) {
+                            finalBossMusic.play().catch(e => console.error("Final Boss BGM autoplay after unlock failed:", e));
                        }
-                       if (finalBossMusic && !finalBossMusic.playing() && currentGameState === GAME_STATE.FINAL_BOSS) {
-                            // もし最終ボス戦中なのにBGMが停止していたら再生を試みる
-                             finalBossMusic.play().catch(e => console.error("Final Boss BGM autoplay after unlock failed:", e));
-                       }
+
                   }).catch(e => console.error("Failed to resume audio context:", e));
              } else {
                   console.log("Audio context is not suspended, unlock not needed."); // Debug Log
@@ -420,11 +421,13 @@
              console.log("Initializing game..."); // Debug Log
              initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
              // アセットロードと最初のゲームループ開始は loadAssets().then() の中、または startGame()/startFinalBossBattle() に任せる
-             // animationFrameId = requestAnimationFrame(update); // ここでのゲームループ開始は不要（startGameやstartFinalBossBattleで開始する）
+             // animationFrameId は requestAnimationFrame(update); // ここでのゲームループ開始は不要（startGameやstartFinalBossBattleで開始する）
 
              // ユーザー操作（最初のタップ/クリック）をトリガーにしてオーディオコンテキストをアンロック
+             // `once: true` で一度だけ実行されるようにする
              document.body.addEventListener('touchstart', unlockAudio, { once: true });
              document.body.addEventListener('mousedown', unlockAudio, { once: true });
+             document.getElementById('startButton').addEventListener('click', unlockAudio, { once: true }); // スタートボタンクリックでもアンロックを試みる
 
 
              loadAssets().then(() => {
@@ -449,7 +452,9 @@
                     // 念のため Howler.volume() の値で設定しておきます。
                     if (backgroundMusic) backgroundMusic.volume(Howler.volume());
                     if (finalBossMusic) finalBossMusic.volume(Howler.volume());
+                    // 効果音の音量もグローバル音量に連動させる場合
                     if (loadedAudio.shoot) loadedAudio.shoot.volume(Howler.volume() * 0.05); // 効果音は小さめに
+
 
                     if (backgroundVideo) {
                         backgroundVideo.volume = newVolume; // 動画の音量はスライダーの値に直接連動
@@ -484,12 +489,12 @@
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
                                 // ユーザー操作による再生
                                 try {
-                                     await backgroundVideo.play(); // 動画再生が成功するのを待つ
+                                     // 動画再生が成功するのを待つ
+                                     await backgroundVideo.play();
                                       console.log("Video playback started on first tap."); // Debug Log
                                 } catch (e) {
-                                      console.error("Video playback error on first tap:", e);
-                                     // 再生に失敗した場合でも、ゲーム開始に進めるようにフラグを立てるなどの考慮が必要かもしれません
-                                     // 現在はエラーをログに出すだけ
+                                      console.warn("Video playback blocked or failed on first tap:", e.message); // Debug Log (ブロックされた場合)
+                                     // 再生に失敗した場合でも、ボタンテキスト変更などの処理は続行
                                 }
 
                                 // backgroundVideo.style.display = 'block'; // showStartButtonで既に表示
@@ -500,6 +505,7 @@
                              console.log("First tap done. Button text changed to START GAME."); // Debug Log
                         } else {
                             // 2回目のタップ：ゲーム開始
+                            // 動画再生が成功したかどうかにかかわらずゲーム開始に進むように変更
                             startGame(true); // 新しいゲームを開始
                             // hideStartButton(); // startGame 内で hideStartButton を呼ぶ
                              console.log("Second tap done. Starting game."); // Debug Log
@@ -692,19 +698,20 @@
                 // スタート画面では動画を表示
                 backgroundVideo.style.display = 'block';
                 backgroundVideo.currentTime = 0; // 動画を最初から再生
-                backgroundVideo.muted = true; // 動画の音声は最初のタップで解除
+                backgroundVideo.muted = true; // 動画の音声は最初のタップで解除（最初は強制ミュート）
                 backgroundVideo.volume = Howler.volume(); // 音量設定は行う (mutedなので意味ないが念のため)
                 backgroundVideo.style.zIndex = -1; // キャンバスより奥に
 
                  // 自動再生を試みる（多くのブラウザでブロックされるが、失敗してもエラーにならないように）
-                 backgroundVideo.play().then(() => {
-                      console.log("Video autoplay attempt successful."); // Debug Log (稀)
-                 }).catch(e => {
-                      console.log("Video autoplay blocked or failed as expected:", e.message); // Debug Log (一般的)
-                     // 自動再生が失敗しても、ボタンクリックでの再生を待つ
-                 });
+                 // startButton のクリックイベント内で play() するように変更済みなので、ここでは自動再生の試みは不要
+                 // backgroundVideo.play().then(() => {
+                 //      console.log("Video autoplay attempt successful."); // Debug Log (稀)
+                 // }).catch(e => {
+                 //      console.log("Video autoplay blocked or failed as expected:", e.message); // Debug Log (一般的)
+                 //     // 自動再生が失敗しても、ボタンクリックでの再生を待つ
+                 // });
 
-                 console.log("Start button shown. Video auto-play attempted."); // Debug Log
+                 console.log("Start button shown. Video element ready for playback on tap."); // Debug Log
             } else {
                  console.warn("Background video element not found for showing start button."); // Debug Log
             }
@@ -1440,7 +1447,7 @@
 
             }
 
-             // ★★★ここからプレイヤーの弾丸が最終ボスに当たる衝突判定！(あなたが提供してくれたコードを元に) ★★★
+             // ★★★ここからプレイヤーの弾丸が最終ボスに当たる衝突判定！(あなたが提供してくれたコードを元に) ★★★★
              // PLAYING状態のボス衝突判定とは別のブロックで行う
              if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && !finalBoss.isExploding) {
                   // 後ろから処理することで、spliceによるインデックスずれを防ぐ
@@ -1566,7 +1573,7 @@
         }
 
         function handleTouchStart(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
+             // ゲームプレイ中または最終ボス戦中以外の場合の処理
              if (currentGameState === GAME_STATE.LOADING || currentGameState === GAME_STATE.GAME_OVER) {
                  e.preventDefault(); // ロード中やゲームオーバー画面での意図しない操作を防ぐ
                  return;
@@ -1628,7 +1635,7 @@
 
 
         function handleTouchEnd() {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
+             // ゲームプレイ中または最終ボス戦中以外の場合の処理
             if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) {
                   // スタート画面でのタップ終了は startButton のイベントリスナーで処理されるのが望ましい
                  if (currentGameState === GAME_STATE.START_SCREEN) return;
@@ -1641,7 +1648,7 @@
         }
 
         function handleMouseDown(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
+             // ゲームプレイ中または最終ボス戦中以外の場合の処理
              if (currentGameState === GAME_STATE.LOADING || currentGameState === GAME_STATE.GAME_OVER) {
                  e.preventDefault(); // ロード中やゲームオーバー画面での意図しない操作を防ぐ
                  return;
@@ -1677,7 +1684,7 @@
         }
 
         function handleMouseUp() {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
+             // ゲームプレイ中または最終ボス戦中以外の場合の処理
             if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) {
                   // スタート画面でのマウスアップは startButton のイベントリスナーで処理されるのが望ましい
                  if (currentGameState === GAME_STATE.START_SCREEN) return;
