@@ -496,17 +496,30 @@
                     // 必ずここでオーディオコンテキストのアンロックを試みる
                     unlockAudio(); // Async関数ではないので await は不要
 
+                    // Howler.js がまだロードされていない場合など、Howlerが使用できない可能性も考慮
+                    if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'suspended') {
+                         // ボタンクリックはユーザー操作なので、ここで audio context を resume するのが最も確実
+                         await Howler.ctx.resume().then(() => {
+                              console.log("Audio context resumed by button click."); // Debug Log
+                              audioUnlocked = true;
+                         }).catch(e => console.error("Audio context resume failed on button click:", e));
+                    } else if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'running') {
+                         console.log("Audio context is already running."); // Debug Log
+                         audioUnlocked = true;
+                    } else {
+                         console.log("Audio context is not applicable or Howler not ready."); // Debug Log
+                    }
+
 
                     if (currentGameState === GAME_STATE.START_SCREEN) {
                         if (!isInitialStartTapDone) {
-                            // 1回目のタップ：動画再生とボタンテキスト変更、オーディオアンロック
+                            // 1回目のタップ：動画再生とボタンテキスト変更
                             if (backgroundVideo) {
                                 backgroundVideo.muted = false; // ミュート解除を試みる
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
                                 // ユーザー操作による再生
                                 try {
-                                     // 動画再生が成功するのを待つ
-                                     // await backgroundVideo.play(); // Promise を待つ必要はないかもしれない、再生開始を試みるだけで十分な場合も
+                                     // 動画再生を試みる（await はつけない、再生開始失敗しても次に進むため）
                                      backgroundVideo.play().then(() => {
                                           console.log("Video playback started successfully on first tap."); // Debug Log
                                      }).catch(e => {
@@ -517,14 +530,14 @@
                                       console.log("Attempted video play on first tap."); // Debug Log
 
 
-                                // } catch (e) {
-                                //       console.warn("Video playback blocked or failed on first tap:", e.message); // Debug Log (ブロックされた場合)
-                                //      // 再生に失敗した場合でも、ボタンテキスト変更などの処理は続行
-                                //      // 何もしない
+                                } catch (e) {
+                                      // ここは try...catch の catch ブロックです。
+                                      // play() が同期的にエラーを発生させた場合にキャッチします。
+                                      // play() が Promise を返す場合は .catch() で非同期エラーを処理します。
+                                      console.error("Synchronous error during video play attempt:", e); // Debug Log
                                 }
 
-                                // backgroundVideo.style.display = 'block'; // showStartButtonで既に表示
-                                // backgroundVideo.style.zIndex = -1; // showStartButtonで既に設定
+
                             }
                             startButton.innerText = "START GAME"; // ボタンのテキストを変更
                             isInitialStartTapDone = true; // フラグを立てる
