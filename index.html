@@ -443,8 +443,37 @@
                   // other states like 'closed' might need different handling, but suspended/running are most common
              }
         }
+function shootProjectile() {
+    projectiles.push({
+        x: player.x + player.width / 2 - 2.5,
+        y: player.y,
+        width: 5,
+        height: 10,
+        dy: -PLAYER_PROJECTILE_SPEED
+    });
+    playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
 
+    if (loadedAudio.shoot) {
+        loadedAudio.shoot.play();
+    }
+}
+function loadAssets() {
+    const imagePromises = [
+        loadImage('player', 'image/player.png'),
+        loadImage('invader', 'image/invader1.png'),
+        loadImage('boss', 'image/invader2.png'),
+        loadImage('boss_explosion', 'image/explosion.png'),
+        loadImage('finalBoss', 'image/final_boss.png')
+    ];
 
+    const audioPromises = [
+        loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
+        loadAudio('shoot', 'audio/shoot.mp3'),
+        loadAudio('finalBossMusic', 'audio/boss_bgm.mp3')
+    ];
+
+    return Promise.all([...imagePromises, ...audioPromises]);
+}
         function init() {
              console.log("Initializing game..."); // Debug Log
              initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
