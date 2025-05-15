@@ -24,7 +24,7 @@
         body {
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: center; /* 垂直方向の中央揃え */
             min-height: 100vh; /* 画面全体の高さ */
             width: 100vw; /* 画面全体の幅 */
             position: relative; /* 子要素の絶対配置の基準 */
@@ -36,19 +36,29 @@
             /* PCでの表示サイズとアスペクト比維持の調整 */
             width: 100%; /* 最初は親要素の幅いっぱいに設定 */
             max-width: 420px; /* PCなどでは最大幅を420pxに制限 */
-            /* 高さは幅に合わせてJSで計算するか、calcで指定 */
-            height: calc(min(100vw, 420px) * (19.5 / 9)); /* 画面幅または420pxの小さい方に合わせて高さを計算 */
-             max-height: 100vh; /* 画面の高さも超えないように制限 */
+            /* 高さは幅に合わせてアスペクト比を維持。画面の高さを超えないように制限 */
+            height: auto; /* 高さは内容に合わせるか、下でcalcで指定 */
+            aspect-ratio: 9 / 19.5; /* 幅と高さの比率を固定 (GAME_WIDTH / GAME_HEIGHT) */
+            max-height: 100vh; /* 画面の高さを超えないように制限 */
+
 
             overflow: hidden; /* はみ出たコンテンツを隠す */
             border: 2px solid #0f0; /* ゲーム画面の枠線 */
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
             z-index: 1; /* 他のUIより手前 */
-            margin: auto; /* 画面中央に配置 */
+            margin: auto; /* 水平方向の中央配置 */
             box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */
 
+             /* Flexアイテムとしてのサイズ調整（bodyのFlexboxに影響される） */
+             flex-shrink: 0; /* 縮小しない */
+             flex-grow: 0; /* 拡大しない */
+
+
              /* PCで高さが足りない場合に上下中央に表示されるように調整 */
-             align-self: center;
+             /* align-self: center; /* 親がflexの場合に自身を中央揃え */
+             /* body に align-items: center; が設定されているため、通常これは不要 */
+
+
         }
 
         /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */
@@ -58,6 +68,7 @@
                 height: min(calc(100vw * (19.5 / 9)), 100vh); /* 画面高さまたは画面幅から計算した高さの小さい方 */
                  max-width: unset; /* スマホサイズでは最大幅を解除 */
                  max-height: unset; /* スマホサイズでは最大高さを解除 */
+                 aspect-ratio: unset; /* スマホサイズでは CSS による aspect-ratio は解除 */
                 /* safe-area-inset は必要に応じて追加してください。
                 padding-top: env(safe-area-inset-top);
                 padding-bottom: env(safe-area-inset-bottom);
@@ -91,6 +102,7 @@
             filter: brightness(0.5); /* 少し暗くして見やすくする */
             z-index: -1; /* キャンバスより奥に配置 */
             display: block; /* 初期状態はJSで制御 */
+             /* video タグに muted 属性はつけず、JSで制御 */
         }
 
         /* スコア、ライフ、レベル表示 */
@@ -144,7 +156,6 @@
             border-radius: 5px;
             transition: background-color 0.3s, color 0.3s, transform 0.1s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-            white-space: nowrap; /* ボタン内のテキストが改行されないように */
         }
         #messageBox button:hover {
             background-color: #0a0;
@@ -268,7 +279,7 @@
 
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
-        <video autoplay loop muted playsinline id="background-video">
+        <video autoplay loop playsinline id="background-video">
             <source src="video/background_loop.mp4" type="video/mp4">
             Your browser does not support the video tag.
         </video>
@@ -380,12 +391,20 @@
         const INVADER_MOVE_DOWN_INTERVAL = 1500; // ★修正: 500から1500に増加（インベーダーが下に移動する間隔（ミリ秒））
 
         let isInitialStartTapDone = false; // 最初のタップ（動画再生）が完了したかどうかのフラグ
+        let audioUnlocked = false; // オーディオコンテキストがアンロックされたかどうかのフラグ
+
 
         // --- Initialization ---
 
-        // initGameEssentials() の前に Howler.js のオーディオコンテキストをアンロックする処理を追加 (一部ブラウザで必要)
+        // オーディオコンテキストをアンロックする処理 (一部ブラウザで必要)
         // ユーザー操作（最初のタップなど）によって実行される必要がある
         function unlockAudio() {
+             // 既にアンロック済みなら何もしない
+             if (audioUnlocked) {
+                  console.log("Audio already unlocked."); // Debug Log
+                  return;
+             }
+
              // Howler.js がロードされているか確認
              if (typeof Howler === 'undefined') {
                   console.log("Howler.js is not loaded yet, unlock skipped."); // Debug Log
@@ -393,6 +412,7 @@
              }
              if (!Howler.usingWebAudio) {
                   console.log("Howler.js not using Web Audio API, unlock skipped."); // Debug Log
+                  audioUnlocked = true; // Web Audio API を使わない場合はアンロック済みとみなす
                   return;
              }
 
@@ -401,6 +421,7 @@
                   console.log("Unlocking audio context..."); // Debug Log
                   Howler.ctx.resume().then(() => {
                        console.log("Audio context resumed successfully."); // Debug Log
+                       audioUnlocked = true; // アンロック成功フラグを立てる
                        // 再開後にボリュームが正しく設定されているか確認
                        Howler.volume(parseFloat(volumeSlider.value) || 0.5);
                        // BGMが再生すべき状態なら再生を試みる（ゲーム状態を確認）
@@ -411,8 +432,13 @@
                        }
 
                   }).catch(e => console.error("Failed to resume audio context:", e));
+             } else if (Howler.state === 'running') {
+                  // すでに実行中（アンロック済み）
+                   console.log("Audio context is already running."); // Debug Log
+                  audioUnlocked = true; // アンロック済みフラグを立てる
              } else {
-                  console.log("Audio context is not suspended, unlock not needed."); // Debug Log
+                  console.log(`Audio context state: ${Howler.state}, unlock not needed.`); // Debug Log
+                  // other states like 'closed' might need different handling, but suspended/running are most common
              }
         }
 
@@ -420,15 +446,7 @@
         function init() {
              console.log("Initializing game..."); // Debug Log
              initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
-             // アセットロードと最初のゲームループ開始は loadAssets().then() の中、または startGame()/startFinalBossBattle() に任せる
-             // animationFrameId は requestAnimationFrame(update); // ここでのゲームループ開始は不要（startGameやstartFinalBossBattleで開始する）
-
-             // ユーザー操作（最初のタップ/クリック）をトリガーにしてオーディオコンテキストをアンロック
-             // `once: true` で一度だけ実行されるようにする
-             document.body.addEventListener('touchstart', unlockAudio, { once: true });
-             document.body.addEventListener('mousedown', unlockAudio, { once: true });
-             document.getElementById('startButton').addEventListener('click', unlockAudio, { once: true }); // スタートボタンクリックでもアンロックを試みる
-
+             // Howler.js アンロックは最初のユーザー操作で行うように変更済み
 
              loadAssets().then(() => {
                 // アセットロード完了後の処理
@@ -459,42 +477,50 @@
                     if (backgroundVideo) {
                         backgroundVideo.volume = newVolume; // 動画の音量はスライダーの値に直接連動
                         // 音量が0より大きい場合はミュートを解除 (ブラウザによっては必要)
+                        // ただし、動画の play() はユーザー操作が必要なので、このミュート解除だけでは音は出ない場合がある
                         if (newVolume > 0 && backgroundVideo.muted) {
-                            backgroundVideo.muted = false;
-                             // ブラウザによっては play() も必要かもしれないが、
-                             // スタートボタンクリックでplay()しているので基本不要
+                             // backgroundVideo.muted = false; // startButtonクリックで制御
                         } else if (newVolume === 0 && !backgroundVideo.muted) {
                              // 音量が0の場合はミュート
-                            backgroundVideo.muted = true;
+                             // backgroundVideo.muted = true; // startButtonクリックで制御
                         }
                     }
                 });
 
                 // スタートボタンのクリックイベントリスナー
-                startButton.addEventListener('click', async () => { // async を追加して await を使えるように
-                    console.log(`Start button clicked. Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}`); // Debug Log
+                // async を追加して await を使えるように
+                // オーディオコンテキストアンロックと動画再生はここで行うのが最も確実
+                startButton.addEventListener('click', async () => {
+                    console.log(`Start button clicked. Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}, Audio unlocked: ${audioUnlocked}`); // Debug Log
+
+                    // 必ずここでオーディオコンテキストのアンロックを試みる
+                    unlockAudio(); // Async関数ではないので await は不要
+
+
                     if (currentGameState === GAME_STATE.START_SCREEN) {
-                        // オーディオコンテキストをアンロック (Howler.jsのunlockAudioが呼ばれているはずだが念のため)
-                        // 一部のブラウザでは、動画のplay()呼び出しもユーザー操作が必要
-                        if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'suspended') {
-                             await Howler.ctx.resume().catch(e => console.error("Audio context resume failed on button click:", e));
-                             console.log("Audio context resumed by button click."); // Debug Log
-                        }
-
-
                         if (!isInitialStartTapDone) {
-                            // 1回目のタップ：動画再生とボタンテキスト変更
+                            // 1回目のタップ：動画再生とボタンテキスト変更、オーディオアンロック
                             if (backgroundVideo) {
-                                backgroundVideo.muted = false; // ミュート解除
+                                backgroundVideo.muted = false; // ミュート解除を試みる
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
                                 // ユーザー操作による再生
                                 try {
                                      // 動画再生が成功するのを待つ
-                                     await backgroundVideo.play();
-                                      console.log("Video playback started on first tap."); // Debug Log
-                                } catch (e) {
-                                      console.warn("Video playback blocked or failed on first tap:", e.message); // Debug Log (ブロックされた場合)
-                                     // 再生に失敗した場合でも、ボタンテキスト変更などの処理は続行
+                                     // await backgroundVideo.play(); // Promise を待つ必要はないかもしれない、再生開始を試みるだけで十分な場合も
+                                     backgroundVideo.play().then(() => {
+                                          console.log("Video playback started successfully on first tap."); // Debug Log
+                                     }).catch(e => {
+                                          console.warn("Video playback attempt failed on first tap:", e.message); // Debug Log (ブロックされた場合)
+                                         // 再生失敗しても、ボタンテキスト変更などの処理は続行
+                                     });
+
+                                      console.log("Attempted video play on first tap."); // Debug Log
+
+
+                                // } catch (e) {
+                                //       console.warn("Video playback blocked or failed on first tap:", e.message); // Debug Log (ブロックされた場合)
+                                //      // 再生に失敗した場合でも、ボタンテキスト変更などの処理は続行
+                                //      // 何もしない
                                 }
 
                                 // backgroundVideo.style.display = 'block'; // showStartButtonで既に表示
@@ -506,15 +532,18 @@
                         } else {
                             // 2回目のタップ：ゲーム開始
                             // 動画再生が成功したかどうかにかかわらずゲーム開始に進むように変更
+                             console.log("Second tap detected. Attempting to start game."); // Debug Log
                             startGame(true); // 新しいゲームを開始
                             // hideStartButton(); // startGame 内で hideStartButton を呼ぶ
-                             console.log("Second tap done. Starting game."); // Debug Log
+
                         }
                     }
                 });
 
                 // アセットロード完了後、最初のゲームループは startGame() または startFinalBossBattle() に任せるのが適切です。
                 // animationFrameId = requestAnimationFrame(update); // ここでのゲームループ開始は不要
+
+                console.log("Game initialized. State: START_SCREEN. Ready to show start button."); // Debug Log
 
             }).catch(error => {
                 console.error("Error loading assets:", error);
@@ -526,6 +555,7 @@
         function initGameEssentials() {
             canvas = document.getElementById('gameCanvas');
             ctx = canvas.getContext('2d');
+            // CanvasのサイズはCSSに追従するが、描画コンテキストの解像度として設定
             canvas.width = GAME_WIDTH;
             canvas.height = GAME_HEIGHT;
             canvas.style.display = 'none'; // ゲーム開始前はキャンバスを非表示にする
@@ -545,16 +575,17 @@
             backgroundVideo = document.getElementById('background-video');
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 最初は隠す
-                backgroundVideo.muted = true; // 最初はミュートにする（自動再生用）
+                // backgroundVideo.muted = true; // HTMLからは削除、JSで制御
                 // backgroundVideo.play().catch(e => console.log("Video autoplay blocked:", e)); // 自動再生はブロックされる可能性が高い
+                 console.log("Background video element found."); // Debug Log
             } else {
                  console.warn("Background video element not found."); // Debug Log
             }
 
             // グローバル変数に Howler.js オブジェクトへの参照を設定
-            // loadAudio 関数内で loadedAudio にセットされるが、変数としても持つことでアクセスしやすくする
-            // backgroundMusic = null; // loadAssets で設定
-            // finalBossMusic = null; // loadAssets で設定
+            // loadAssets 関数内で Howl オブジェクトが生成され、これらの変数に代入されます。
+            // backgroundMusic = null; // initの最初で null にリセットされる
+            // finalBossMusic = null; // initの最初で null にリセットされる
 
 
             player = {
@@ -574,6 +605,7 @@
             document.addEventListener('keyup', handleKeyUp);
 
             // Touch event listeners for mobile
+            // passive: false を指定してpreventDefault()が有効になるようにする
             document.body.addEventListener('touchstart', handleTouchStart, { passive: false });
             document.body.addEventListener('touchmove', handleTouchMove, { passive: false });
             document.body.addEventListener('touchend', handleTouchEnd);
@@ -611,6 +643,7 @@
                 loadImage('finalBoss', 'image/final_boss.png'), // ★ あなたのファイルパスに合わせて修正してください ★
             ];
             const audioPromises = [
+                // loadAudio 関数の Promise が Howl オブジェクトを解決するように修正済み
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3').then(sound => backgroundMusic = sound), // ロード後、グローバル変数に設定
                 // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
                 loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
@@ -638,13 +671,24 @@
                 };
                 img.onerror = (e) => {
                      console.error(`Failed to load image: ${src}`, e); // Debug Log
-                    reject(new Error(`Failed to load image: ${src} (${e.message || e})`));
+                    // 画像ロード失敗時はエラーログを出すが、ゲーム続行のため reject はしない
+                    // reject(new Error(`Failed to load image: ${src} (${e.message || e})`));
+                     console.warn(`Image load failed for ${src}, game might not display correctly.`); // Debug Log
+                     resolve(); // エラーでもresolveして他のアセットロードを止めない
                 }
             });
         }
 
         function loadAudio(name, src) {
             return new Promise((resolve, reject) => {
+                 // Howler がまだロードされていない場合はエラーを防ぐ
+                 if (typeof Howler === 'undefined') {
+                      console.error(`Howler.js not available when trying to load audio: ${src}`); // Debug Log
+                      // reject(new Error("Howler.js not available")); // エラーにする場合はこちら
+                      console.warn(`Howler.js not available, audio load skipped for ${src}.`); // Debug Log
+                      resolve(null); // null を解決して処理を続ける
+                      return;
+                 }
                 const sound = new Howl({
                     src: [src],
                     volume: Howler.volume(),
@@ -653,19 +697,19 @@
                         if (name === 'shoot') { // もし読み込んだ音がミサイル音(shoot)なら
                              sound.volume(Howler.volume() * 0.05); // その音の個別音量を設定 (調整可能) - グローバル音量に連動
                          }
-                         // ★ finalBossMusic も個別の音量設定が必要であればここに追加
+                         // ★ finalBossMusic や backgroundMusic もグローバル音量に連動させる場合
                          if (name === 'finalBossMusic' || name === 'backgroundMusic') {
-                             // BGMはグローバル音量に連動させる
-                            sound.volume(Howler.volume());
-                            // Howler v2.2.0 以降はデフォルトでアンロックされるため、autoplay: true や play() はユーザー操作なしでも動く可能性が高いですが、
-                            // 安全策としてスタートボタンクリックで再生制御します。
+                             sound.volume(Howler.volume());
                          }
                          console.log(`Loaded audio: ${src}`); // Debug Log
                         resolve(sound); // ロードした Howl オブジェクトを解決する Promise に渡す
                     },
                     onloaderror: (id, error) => {
                          console.error(`Failed to load audio: ${src} (ID: ${id})`, error); // Debug Log
-                        reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`));
+                        // 音声ロード失敗時もゲーム続行のため reject はしない
+                        // reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`));
+                         console.warn(`Audio load failed for ${src}, game music/sound might be missing.`); // Debug Log
+                         resolve(null); // null を解決して処理を続ける
                     }
                 });
             });
@@ -679,7 +723,7 @@
             canvas.style.display = 'none';
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none';
-                backgroundVideo.muted = true; // ロード中はミュート
+                // backgroundVideo.muted = true; // HTMLからは削除、JSで制御
                  console.log("Loading message shown."); // Debug Log
             }
         }
@@ -704,12 +748,12 @@
 
                  // 自動再生を試みる（多くのブラウザでブロックされるが、失敗してもエラーにならないように）
                  // startButton のクリックイベント内で play() するように変更済みなので、ここでは自動再生の試みは不要
-                 // backgroundVideo.play().then(() => {
-                 //      console.log("Video autoplay attempt successful."); // Debug Log (稀)
-                 // }).catch(e => {
-                 //      console.log("Video autoplay blocked or failed as expected:", e.message); // Debug Log (一般的)
-                 //     // 自動再生が失敗しても、ボタンクリックでの再生を待つ
-                 // });
+                 backgroundVideo.play().then(() => {
+                      console.log("Video autoplay attempt successful."); // Debug Log (稀)
+                 }).catch(e => {
+                      console.log("Video autoplay blocked or failed as expected:", e.message); // Debug Log (一般的)
+                     // 自動再生が失敗しても、ボタンクリックでの再生を待つ
+                 });
 
                  console.log("Start button shown. Video element ready for playback on tap."); // Debug Log
             } else {
@@ -1007,15 +1051,15 @@
 
             // Update player position
             if (player.movingLeft && player.x > 0) {
-                player.x -= PLAYER_SPEED;
+                player.x -= PLAYER_SPEED * deltaTime * 60; // deltaTime 考慮
             } else if (player.movingRight && player.x < GAME_WIDTH - player.width) {
-                player.x += PLAYER_SPEED;
+                player.x += PLAYER_SPEED * deltaTime * 60; // deltaTime 考慮
             } else if (playerTargetX !== null) {
                 const targetPlayerCenter = playerTargetX;
                 const currentPlayerCenter = player.x + player.width / 2;
 
                 // 移動量が小さければ直接目標位置へ (カクつき防止)
-                if (Math.abs(targetPlayerCenter - currentPlayerCenter) < PLAYER_SPEED * deltaTime * 60) { // deltaTime 考慮
+                if (Math.abs(targetPlayerCenter - currentPlayerCenter) < PLAYER_SPEED * deltaTime * 60 * 0.5) { // deltaTime 考慮
                      player.x = targetPlayerCenter - player.width / 2;
                 } else {
                     if (targetPlayerCenter < currentPlayerCenter) {
@@ -1068,29 +1112,34 @@
                 if (invaders.length > 0) {
                     let minX = Infinity;
                     let maxX = -Infinity;
-                    const currentDirection = invaders[0].dx > 0 ? 1 : -1; // 現在の進行方向を明確に
+                    // インベーダーのdxは速度の方向も示す
+                    const currentDirection = invaders[0].dx > 0 ? 1 : -1;
 
                     invaders.forEach(invader => {
-                        invader.x += invader.dx * deltaTime; // deltaTimeを掛けて速度調整
+                        // deltaTime を掛けて速度調整
+                        invader.x += invader.dx * deltaTime;
                         minX = Math.min(minX, invader.x);
                         maxX = Math.max(maxX, invader.x + invader.width);
                     });
 
                     let reverseDirection = false;
-                    // 速度に応じて端判定の許容量を調整
-                    // const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2); // deltaTime 考慮
-
-                    if (minX < 0 /* + penetrationAmount */ && currentDirection < 0) {
+                    // 端に到達したかどうかの判定（画面の端から少し手前で判定するなど調整可能）
+                    if (minX < 0 && currentDirection < 0) {
                         reverseDirection = true;
-                    } else if (maxX > GAME_WIDTH /* - penetrationAmount */ && currentDirection > 0) {
+                    } else if (maxX > GAME_WIDTH && currentDirection > 0) {
                          reverseDirection = true;
                     }
 
                     if (reverseDirection) {
                         invaders.forEach(invader => {
                             invader.dx *= -1; // 水平速度を反転
-                            // const nudge = (invader.dx > 0 ? penetrationAmount : -penetrationAmount); // deltaTime 考慮
-                             // invader.x += nudge; // 端からの押し戻し
+                            // 方向転換時に少し押し戻す（端に張り付かないように）
+                             const nudgeAmount = Math.abs(invader.dx * deltaTime * 10); // 押し戻し量を調整
+                            if (invader.dx > 0) { // 右向きになった場合
+                                invader.x += nudgeAmount;
+                            } else { // 左向きになった場合
+                                invader.x -= nudgeAmount;
+                            }
                         });
 
                          // 方向転換と同時に下へ移動（時間間隔のチェックは維持）
@@ -1099,19 +1148,20 @@
                              invaders.forEach(invader => {
                                  invader.y += INVADER_MOVE_DOWN_AMOUNT;
                                  // ゲームオーバー判定
-                                 if (invader.y + invader.height > player.y - player.height / 2) { // 自機の中央Y座標あたりで判定
+                                 // インベーダーがプレイヤーのY座標（またはそれ以下）に到達したら
+                                 if (invader.y + invader.height > player.y) { // インベーダーの下端がプレイヤーの上端を超えたら
                                       if (currentGameState !== GAME_STATE.GAME_OVER) { // 重複防止
                                            console.log("Invaders reached player line. Ending game."); // Debug Log
                                           endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
                                       }
-                                     return; // ゲームオーバーなので以降の処理は不要
+                                     // return; // ゲームオーバーなので以降の処理は不要 (endGame でループがキャンセルされる)
                                  }
                              });
                              lastInvaderMoveDownTime = currentTime;
                         }
                     }
 
-                    // 個々のインベーダーが画面外に出ないようにクランプ (端からの押し戻しを削除したのでこれも不要かも)
+                    // 個々のインベーダーが画面外に出ないようにクランプ (押し戻し処理をしたので不要かも)
                     // invaders.forEach(invader => {
                     //      invader.x = Math.max(0, Math.min(invader.x, GAME_WIDTH - invader.width));
                     // });
@@ -1120,20 +1170,25 @@
                 // Invader shooting (PLAYING状態かつインベーダーが存在する場合)
                 if (invaders.length > 0) {
                     const randomInvader = invaders[Math.floor(Math.random() * invaders.length)];
-                    const baseInvaderShootInterval = 90;
+                    const baseInvaderShootInterval = 90; // フレーム単位での基準間隔
                     const intervalDecreasePerLevel = 3;
-                    const currentInvaderShootInterval = Math.max(30, baseInvaderShootInterval - (currentLevel - 1) * intervalDecreasePerLevel);
+                    const currentInvaderShootInterval = Math.max(30, baseInvaderShootInterval - (currentLevel - 1) * intervalDecreasePerLevel); // 最小間隔30フレーム
 
                     // deltaTime を考慮して発射確率を調整
-                    if (Math.random() < (1 / currentInvaderShootInterval) * deltaTime * 60) { // 発射確率をフレームレートに依存させないように調整
+                    // 1フレームあたりの発射確率 = 1 / currentInvaderShootInterval
+                    // 経過時間 (deltaTime) あたりの発射回数の期待値 = (1 / currentInvaderShootInterval) * (deltaTime * 60)
+                    // 確率として表現 = (1 / currentInvaderShootInterval) * (deltaTime * 60)
+                    const shootProbability = (1 / currentInvaderShootInterval) * (deltaTime * 60);
+
+                    if (Math.random() < shootProbability) {
                          invaderProjectiles.push({
                             x: randomInvader.x + randomInvader.width / 2 - 2.5,
                             y: randomInvader.y + randomInvader.height,
                             width: 5,
                             height: 10,
-                            dx: 0,
-                            dy: ENEMY_PROJECTILE_SPEED,
-                            type: 'invader'
+                            dx: 0, // 横移動はしない
+                            dy: ENEMY_PROJECTILE_SPEED, // 下向き
+                            type: 'invader' // 弾のタイプを追加
                         });
                     }
                 }
@@ -1151,7 +1206,7 @@
 
                 // Boss movement and shooting (PLAYING状態かつ通常ボスが存在する場合)
                 if (boss && !boss.isExploding) { // ボスが爆発中でなければ更新
-                    boss.x += boss.dx * deltaTime; // deltaTime 考慮
+                    boss.x += boss.dx * deltaTime * 60; // deltaTime 考慮
 
                     if (boss.x + boss.width > GAME_WIDTH || boss.x < 0) {
                         boss.dx *= -1;
@@ -1164,7 +1219,7 @@
                     if (boss.shootTimer >= boss.shootInterval) {
                         // 通常弾
                         invaderProjectiles.push({
-                            x: boss.x + boss.width / 2 - 2.5,
+                            x: boss.x + boss.width / 2 - 3.5, // 弾の中心をボスの中心に合わせる
                             y: boss.y + boss.height,
                             width: 7, height: 14, dx: 0, dy: ENEMY_PROJECTILE_SPEED * 1.5, type: 'boss_straight'
                         });
@@ -1172,12 +1227,13 @@
                         const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(currentLevel / 2);
                         const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
                         const angleStep = radialCount > 1 ? BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1) : 0; // 弾が1つの場合は角度ステップは0
+
                         for (let i = 0; i < radialCount; i++) {
-                            const angle = startAngle + i * angleStep;
-                            invaderProjectiles.push({
-                                x: boss.x + boss.width / 2 - 2.5,
+                             const angle = startAngle + i * angleStep;
+                             invaderProjectiles.push({
+                                x: boss.x + boss.width / 2 - 3.5,
                                 y: boss.y + boss.height,
-                                width: 7, height: 14, dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED, dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED, type: 'boss_radial'
+                                width: 7, height: 14, dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED * 1.5, dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED * 1.5, type: 'boss_radial'
                             });
                         }
                         // if (loadedAudio.bossShoot) { loadedAudio.bossShoot.play(); }
@@ -1490,7 +1546,7 @@
                     if (lives <= 0 && currentGameState !== GAME_STATE.GAME_OVER) { // すでにゲームオーバー状態で重複して呼ばれないようにチェックを追加
                          console.log("Lives reached 0. Ending game with loss."); // Debug Log
                          endGame(false); // ゲームオーバー
-                         // return; // ゲームオーバーなので以降の敵弾チェックは不要 (ループを抜ける必要あり)
+                         // return; // ゲームオーバーなので以降の敵弾チェックは不要 (endGame でループがキャンセルされる)
                     }
                     // プレイヤーに当たったらその弾丸のチェックは終了
                     // break; // プレイヤーは単体なので当たったら終了
@@ -1576,12 +1632,16 @@
              // ゲームプレイ中または最終ボス戦中以外の場合の処理
              if (currentGameState === GAME_STATE.LOADING || currentGameState === GAME_STATE.GAME_OVER) {
                  e.preventDefault(); // ロード中やゲームオーバー画面での意図しない操作を防ぐ
+                 // オーディオアンロックを試みる
+                 unlockAudio();
                  return;
              }
             // スタート画面でのタップは startButton のイベントリスナーで処理されるのが望ましい
             if (currentGameState === GAME_STATE.START_SCREEN) {
                  // スタートボタン以外の場所をタップした場合の処理（何もしない、またはメッセージ表示など）
                  // e.preventDefault(); // 意図しないスクロールなどを防ぐ
+                 // オーディオアンロックを試みる
+                 unlockAudio();
                  return; // スタート画面での操作はボタンに限定するため、ここでは処理しない
             }
 
@@ -1651,12 +1711,16 @@
              // ゲームプレイ中または最終ボス戦中以外の場合の処理
              if (currentGameState === GAME_STATE.LOADING || currentGameState === GAME_STATE.GAME_OVER) {
                  e.preventDefault(); // ロード中やゲームオーバー画面での意図しない操作を防ぐ
+                 // オーディオアンロックを試みる
+                 unlockAudio();
                  return;
              }
             // スタート画面でのマウスクリックは startButton のイベントリスナーで処理されるのが望ましい
              if (currentGameState === GAME_STATE.START_SCREEN) {
                  // スタートボタン以外の場所をクリックした場合の処理（何もしない、またはメッセージ表示など）
                  // e.preventDefault(); // 意図しない右クリックメニューなどを防ぐ
+                 // オーディオアンロックを試みる
+                 unlockAudio();
                  return; // スタート画面での操作はボタンに限定するため、ここでは処理しない
              }
 
