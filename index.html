@@ -416,6 +416,11 @@
              // Howler.js のオーディオコンテキストが中断状態の場合に再開を試みる
              if (Howler.state === 'suspended') {
                   console.log("Unlocking audio context..."); // Debug Log
+                  // Howler.ctx が null かチェックを追加
+                  if (Howler.ctx === null) {
+                       console.error("Howler.ctx is null, cannot resume audio context."); // Debug Log
+                       return;
+                  }
                   Howler.ctx.resume().then(() => {
                        console.log("Audio context resumed successfully."); // Debug Log
                        audioUnlocked = true; // アンロック成功フラグを立てる
@@ -445,7 +450,10 @@
              initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
              // Howler.js アンロックは最初のユーザー操作で行うように変更済み
 
-             loadAssets().then(() => {
+             // loadAssets 関数の呼び出しは initGameEssentials の後、かつ非同期で行われます。
+             // ReferenceError は initGameEssentials の中で loadAssets を呼ぼうとしていないか確認
+             // init 関数内では、loadAssets は .then() の前に呼ばれています。
+             loadAssets().then(() => { // ★ここに loadAssets 関数の呼び出しがあります★
                 // アセットロード完了後の処理
                  console.log("Assets loaded successfully."); // Debug Log
                 hideLoadingMessage();
