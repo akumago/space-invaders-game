@@ -500,8 +500,8 @@
                 // ★追加: ボス爆発の画像 (通常ボスと最終ボス共通で使用)
                 loadImage('boss_explosion', 'image/explosion.png'),
 
-                // ★最終ボス画像を追加（ここでは通常ボスと同じ画像を再利用）★
-                loadImage('finalBoss', 'image/invader2.png'),
+                // ★★★ ここにあなたが指定した最終ボス画像を追加 ★★★
+                loadImage('finalBoss', 'image/final_boss.png'), // ★ あなたのファイルパスに合わせて修正してください ★
             ];
             const audioPromises = [
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
@@ -512,6 +512,9 @@
                 // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
                 // loadAudio('bossSpawn', 'audio/boss_spawn.mp3'), // ボス出現音 (必要であれば)
                 // loadAudio('playerHit', 'audio/player_hit.mp3'), // 自機被弾音 (必要であれば)
+
+                // ★★★ ここにあなたが指定した最終ボス音楽を追加 ★★★
+                loadAudio('finalBossMusic', 'audio/boss_bgm.mp3'), // ★ あなたのファイルパスに合わせて修正してください ★
             ];
             return Promise.all([...imagePromises, ...audioPromises]);
         }
@@ -536,8 +539,12 @@
                     onload: () => {
                         loadedAudio[name] = sound;
                         if (name === 'shoot') { // もし読み込んだ音がミサイル音(shoot)なら
-                             sound.volume(0.05); // その音の個別音量を0.5に設定する (ここを調整！)
+                             sound.volume(0.05); // その音の個別音量を設定 (調整可能)
                          }
+                         // ★ finalBossMusic も個別の音量設定が必要であればここに追加
+                         // if (name === 'finalBossMusic') {
+                         //    sound.volume(Howler.volume() * 0.7); // 例: BGMより少し小さく
+                         // }
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
                     onloaderror: (id, error) => reject(new Error(`Failed to load audio: ${src} (ID: ${id}, Error: ${error})`))
@@ -658,6 +665,58 @@
             };
         }
 
+        // ★★★ あなたが定義した startFinalBossBattle 関数をここに追加 ★★★
+        function startFinalBossBattle() {
+            console.log("Starting Final Boss Battle!"); // Debug Log
+            currentGameState = GAME_STATE.FINAL_BOSS; // ゲーム状態を最終ボス戦に設定
+
+            // 通常の敵やボス、敵弾を全てクリア
+            invaders = [];
+            boss = null;
+            invaderProjectiles = [];
+            projectiles = []; // プレイヤーの弾もクリアしておく
+
+            currentLevel = MAX_LEVELS; // レベル表示を最終レベルに設定
+            updateLevelDisplay();
+
+            // ★★★ 最終ボスを生成 ★★★
+            // あなたが提供してくれたコードを参考に調整
+            finalBoss = {
+                x: GAME_WIDTH / 2 - (BOSS_WIDTH * 1.5) / 2, // ★ ボスの幅*1.5 を考慮して中央配置
+                y: 30, // 上の方に配置
+                width: BOSS_WIDTH * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
+                height: BOSS_HEIGHT * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
+                dx: 0, // この時点では動かしません。更新ロジックで動かします。
+                dy: 0, // この時点では動かしません。
+                hp: BOSS_HP_PER_LEVEL * MAX_LEVELS * 1.5, // ★ 最終ボスのHPをさらに増加 (調整可能)
+                shootTimer: 0, // 射撃タイマー
+                shootInterval: Math.max(30, 60 - (MAX_LEVELS - 1) * 0.5), // ★ 射撃間隔を再調整
+                radialShootTimer: 0, // 放射状ミサイル用タイマー
+                radialShootInterval: Math.max(60, 100 - (MAX_LEVELS - 1) * 1), // ★ 放射状ミサイル間隔を再調整
+                isExploding: false, // 爆発中フラグ
+                explosionTimer: 0, // 爆発タイマー
+                explosionDuration: 60, // 爆発時間 (フレーム単位)
+                originalImage: 'finalBoss', // 最終ボス画像キーを使用
+                explosionImage: 'boss_explosion' // 爆発用画像のキー
+            };
+
+            // ★★★ BGMを最終ボス用に切り替え ★★★
+            if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                loadedAudio.backgroundMusic.stop(); // 通常BGMを停止
+            }
+            if (loadedAudio.finalBossMusic) { // 最終ボス音楽がロードされていれば
+                loadedAudio.finalBossMusic.play(); // 再生開始
+                loadedAudio.finalBossMusic.loop(true); // ループ設定
+                loadedAudio.finalBossMusic.volume(Howler.volume()); // 音量設定
+            }
+
+            // 必要であれば、最終ボス戦開始のSEやメッセージ表示などもここに追加
+            lastTimestamp = performance.now(); // タイムスタンプをリセットして deltaTime を正しく計算できるように
+            // animationFrameId = requestAnimationFrame(update); // ★ update ループは既に実行中なので、ここで再度呼ぶ必要はありません
+        }
+        // ★★★ startFinalBossBattle 関数、ここまで ★★★
+
+
         function startGame(isNewGame) {
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
@@ -703,116 +762,59 @@
             }
 
 
-            animationFrameId = requestAnimationFrame(update);
+            // animationFrameId は initGameEssentials または init の最後で呼ぶのが適切ですが、
+            // ここで開始することも可能です。重複して呼ばれないように注意が必要です。
+            // 現在のコード構成では initGameEssentials の後、loadAssets の中で update が初めて呼ばれます。
+            // なので、ここはそのままにしておきます。update 関数自体は asset ロード後に呼ばれます。
+
 
             lastInvaderMoveDownTime = performance.now();
         }
 
         function endGame(win) {
-            currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を一時的にGAME_OVERに設定
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
+            // 最終ボス撃破による勝利の場合は、GAME_OVER 状態に移行し、最終クリアメッセージを表示
+             if (win && currentGameState === GAME_STATE.FINAL_BOSS && !finalBoss) { // 最終ボス撃破後の勝利判定
+                  currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を GAME_OVER に設定
+                  if (animationFrameId) {
+                      cancelAnimationFrame(animationFrameId);
+                      animationFrameId = null;
+                  }
+                  // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                  if (backgroundVideo) {
+                      backgroundVideo.style.display = 'block';
+                      backgroundVideo.currentTime = 0;
+                      backgroundVideo.muted = false;
+                      backgroundVideo.volume = Howler.volume();
+                      backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                      backgroundVideo.style.zIndex = -1;
+                  }
+                   canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
 
-            // ★修正：ゲームオーバー（敗北）の場合のみBGMを停止
-            if (!win) {
-                if (loadedAudio.backgroundMusic) {
-                    loadedAudio.backgroundMusic.stop();
+                   let message = `You Win! Final Score: ${score}`;
+                   const playAgainButton = messageBox.querySelector('button');
+                   playAgainButton.innerText = "Play Again";
+                   playAgainButton.onclick = () => {
+                       hideMessageBox();
+                       showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
+                   };
+                   showMessage(message);
+
+                   // ★最終クリア時もBGMは停止 (最終ボス音楽が鳴っているはず)
+                   if (loadedAudio.finalBossMusic && loadedAudio.finalBossMusic.playing()) {
+                       loadedAudio.finalBossMusic.stop();
+                   } else if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                        // 念のため、もし通常BGMが鳴っていればそれも停止
+                       loadedAudio.backgroundMusic.stop();
+                   }
+
+
+             } else if (!win) { // ゲームオーバー（敗北）の場合
+                currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を GAME_OVER に設定
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
                 }
-            }
-
-
-            // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
-            if (backgroundVideo) {
-                backgroundVideo.style.display = 'none';
-                backgroundVideo.pause();
-                backgroundVideo.currentTime = 0;
-            }
-            canvas.style.display = 'block'; // キャンバスをメッセージボックスの背後に表示
-
-            let message = '';
-            const playAgainButton = messageBox.querySelector('button');
-
-            if (win) {
-                if (currentLevel >= MAX_LEVELS && !finalBoss) { // 最終レベルクリアかつ最終ボスを倒した場合
-                    message = `You Win! Final Score: ${score}`;
-                    playAgainButton.innerText = "Play Again";
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                    };
-                    // 最終クリアまたはゲームオーバー時は背景動画を再表示
-                    if (backgroundVideo) {
-                        backgroundVideo.style.display = 'block';
-                        backgroundVideo.currentTime = 0;
-                        backgroundVideo.muted = false;
-                        backgroundVideo.volume = Howler.volume();
-                        backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
-                        backgroundVideo.style.zIndex = -1;
-                    }
-                    canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                    // ★最終クリア時もBGMは停止
-                    if (loadedAudio.backgroundMusic) {
-                        loadedAudio.backgroundMusic.stop();
-                    }
-                } else { // 中間レベルクリアの場合 または 通常ボス撃破で最終レベルに到達した場合
-                    if (currentLevel < MAX_LEVELS) { // 通常レベルクリア
-                         message = `Level ${currentLevel} Clear! Score: ${score}`;
-                         currentLevel++; // 次のレベルへ進む
-                         playAgainButton.innerText = `Next Level (${currentLevel})`;
-                         playAgainButton.onclick = () => {
-                             hideMessageBox();
-                             // 次のレベルへ直接移行し、最初のスタート画面に戻らない
-                             startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
-                         };
-                         // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
-                         canvas.style.display = 'block'; // キャンバスは表示したまま
-                         // ★中間レベルクリア時はBGMは停止しない（継続再生）
-                    } else { // MAX_LEVELS に到達したが最終ボスはまだ存在
-                         // 最終ボス戦へ移行するための処理をここに追加する必要があるかもしれません
-                         // 現在はLキーでスキップして最終ボス戦に入りますが、
-                         // 本来は最終レベルの通常ボス撃破で最終ボス戦が始まるロジックが必要です。
-                         // この endGame(true) は通常レベルクリアとして処理されます。
-                         // 最終ボス戦の開始ロジックは handleKeyDown のLキー部分や、
-                         // 通常ボス撃破後のレベルMAXチェック部分に追加する必要があります。
-                         // ここでは一旦、通常レベルクリアと同じ挙動にしておきます。
-                          message = `Level ${currentLevel} Clear! Preparing for Final Battle! Score: ${score}`;
-                          playAgainButton.innerText = `Continue`; // ボタンテキストを変更
-                          playAgainButton.onclick = () => {
-                              hideMessageBox();
-                              // 最終ボス戦を開始する関数をここで呼び出すなど
-                              // startFinalBossBattle(); // 仮の関数名
-                              // 現状はLキーでスキップして入る想定なので、ここでは何もしないか、
-                              // 再度ゲーム画面に戻してLキー入力を待つ形になります。
-                              // ゲーム画面に戻す処理：
-                                currentGameState = GAME_STATE.PLAYING; // PLAYINGに戻す
-                                lastTimestamp = performance.now();
-                                animationFrameId = requestAnimationFrame(update);
-                                // 必要に応じてプレイヤーの位置リセットなど
-                                player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
-                                player.movingLeft = false;
-                                player.movingRight = false;
-                                player.invincible = false;
-                                player.invincibleTimer = 0;
-                                player.blinkTimer = 0;
-                                invaders = []; // インベーダーは消しておく
-                                boss = null; // ボスも消しておく
-                                invaderProjectiles = []; // 敵弾も消しておく
-                          };
-                          canvas.style.display = 'block'; // キャンバスは表示したまま
-                           // BGMは停止しない
-                    }
-                }
-            } else {
-                // ゲームオーバー（敗北）の場合
-                message = `Game Over! Score: ${score}`;
-                playAgainButton.innerText = "Play Again";
-                playAgainButton.onclick = () => {
-                    hideMessageBox();
-                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                };
-                // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                // ゲームオーバー時は背景動画を再表示
                 if (backgroundVideo) {
                     backgroundVideo.style.display = 'block';
                     backgroundVideo.currentTime = 0;
@@ -821,10 +823,46 @@
                     backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
                     backgroundVideo.style.zIndex = -1;
                 }
-                canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                // ★ゲームオーバー時はBGM停止（上記で処理済み）
+                 canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+
+                let message = `Game Over! Score: ${score}`;
+                const playAgainButton = messageBox.querySelector('button');
+                playAgainButton.innerText = "Play Again";
+                playAgainButton.onclick = () => {
+                    hideMessageBox();
+                    showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
+                };
+                showMessage(message);
+
+                // ★ゲームオーバー時はBGM停止
+                if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                    loadedAudio.backgroundMusic.stop();
+                }
+                 if (loadedAudio.finalBossMusic && loadedAudio.finalBossMusic.playing()) {
+                     loadedAudio.finalBossMusic.stop(); // もし最終ボス戦でゲームオーバーなら最終ボス音楽を停止
+                 }
+
+            } else { // 中間レベルクリアの場合 (MAX_LEVELS未満)
+                // currentLevel は既に次のレベルに進んでいる前提
+                 currentGameState = GAME_STATE.GAME_OVER; // 一時的に GAME_OVER にしてメッセージ表示
+                 if (animationFrameId) {
+                     cancelAnimationFrame(animationFrameId);
+                     // animationFrameId = null; // end of endGame will request new frame
+                 }
+
+                let message = `Level ${currentLevel - 1} Clear! Score: ${score}`; // 表示はクリアしたレベル
+                const playAgainButton = messageBox.querySelector('button');
+                playAgainButton.innerText = `Next Level (${currentLevel})`; // ボタンは次のレベルへ
+                playAgainButton.onclick = () => {
+                    hideMessageBox();
+                    startGame(false); // 新しいゲームではなく、現在のスコア・ライフ・レベルで開始
+                };
+                 // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
+                 canvas.style.display = 'block'; // キャンバスは表示したまま
+                 // BGMは停止しない（継続再生）
+
+                 showMessage(message);
             }
-            showMessage(message);
         }
 
         // --- Game Loop ---
@@ -1019,12 +1057,13 @@
                         updateScoreDisplay();
                         // 通常レベルクリア判定 (インベーダーと通常ボス両方いない場合) - これは boss=null になった直後にチェック
                         if (invaders.length === 0 && !boss && currentLevel < MAX_LEVELS) {
-                            endGame(true); // 通常レベルクリア画面へ移行
+                            endGame(true); // 通常レベルクリア画面へ移行（次のレベルへ）
                         } else if (invaders.length === 0 && !boss && currentLevel >= MAX_LEVELS) {
-                             // MAX_LEVELSで通常ボスを倒した場合の処理
-                             // ここで最終ボス戦開始の準備を行うか、endGame(true)でクリアメッセージを出すか選択
-                             // 今回はLキーで最終ボス戦にスキップするので、ここでは endGame(true) でクリアメッセージを出すのみにしておく
-                             endGame(true); // MAXレベルの通常ボス撃破でも一旦クリア画面へ（本来は最終ボス戦へ）
+                             // ★★★ ここが修正箇所！MAX_LEVELSで通常ボスを倒した場合 ★★★
+                             // あなたの計画通り、最終ボス戦を開始する関数を呼び出す
+                             console.log(`Level ${currentLevel} cleared! Starting Final Boss Battle!`); // Debug Log
+                             startFinalBossBattle(); // ★★★ 通常レベルクリアではなく、最終ボス戦を開始する関数を呼び出す ★★★
+                             // endGame(true); // これは不要になる（最終ボス撃破後に最終クリア画面へ移行）
                         }
                     }
                 }
@@ -1099,7 +1138,6 @@
         }
 
         // --- Drawing Functions ---
-        // ... (draw 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
 
         function draw() {
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
@@ -1160,7 +1198,7 @@
                 }
             }
 
-            // ★★★ここから FINAL_BOSS 状態の描画処理を追加！★★★
+            // ★★★ここから FINAL_BOSS 状態の描画処理！(あなたが提供してくれたコードを元に) ★★★
              if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss) {
                  if (finalBoss.isExploding && loadedImages[finalBoss.explosionImage]) {
                      // 最終ボス爆発のアニメーションを描画 (通常ボスと同じロジックを流用)
@@ -1181,14 +1219,14 @@
                     // 最終ボスの画像を描画
                     ctx.drawImage(loadedImages[finalBoss.originalImage], finalBoss.x, finalBoss.y, finalBoss.width, finalBoss.height);
 
-                    // 最終ボスのHPバーを描画
+                    // 最終ボスのHPバーを描画 (あなたが提供してくれたコードを元に)
                     const hpBarWidth = finalBoss.width * 0.9; // HPバーを少し大きく
                     const hpBarHeight = 7; // HPバーを少し太く
                     const hpBarX = finalBoss.x + (finalBoss.width - hpBarWidth) / 2;
                     const hpBarY = finalBoss.y + finalBoss.height + 10; // 少し下に表示
 
                     ctx.fillStyle = 'red'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-                    ctx.fillStyle = 'lime'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (finalBoss.hp / (BOSS_HP_PER_LEVEL * MAX_LEVELS)), hpBarHeight); // 最終ボスの最大HPは全レベルの合計HP
+                    ctx.fillStyle = 'lime'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (finalBoss.hp / (BOSS_HP_PER_LEVEL * MAX_LEVELS * 1.5)), hpBarHeight); // ★ 最大HPに合わせて修正
                     ctx.strokeStyle = '#0f0'; ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
 
                  } else {
@@ -1214,7 +1252,6 @@
 
 
         // --- Collision Detection ---
-        // ... (checkCollisions 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
 
         function checkCollisions() {
             // Player projectiles hitting invaders (PLAYING状態のみ)
@@ -1262,7 +1299,7 @@
                 });
             }
 
-             // ★★★ここからプレイヤーの弾丸が最終ボスに当たる衝突判定を追加！★★★
+             // ★★★ここからプレイヤーの弾丸が最終ボスに当たる衝突判定！(あなたが提供してくれたコードを元に) ★★★
              if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && !finalBoss.isExploding) {
                   projectiles.forEach((p, pIndex) => {
                       if (isColliding(p, finalBoss)) {
@@ -1279,7 +1316,7 @@
                       }
                   });
              }
-             // ★★★プレイヤーの弾丸が最終ボスに当たる衝突判定の追加、ここまで！★★★
+             // ★★★プレイヤーの弾丸が最終ボスに当たる衝突判定、ここまで！★★★
 
 
             // Invader projectiles hitting player (PLAYING状態とFINAL_BOSS状態の両方でチェック)
@@ -1314,7 +1351,6 @@
 
         // --- Input Handling ---
 
-        // ★★★ handleKeyDown 関数全体を、以下の修正済みのコードブロックと丸ごと置き換えてください ★★★
         function handleKeyDown(e) {
             // ゲームプレイ中 (PLAYING) または最終ボス戦中 (FINAL_BOSS) のみキー操作を有効にする
             // この関数の最初の状態チェックは、このままで大丈夫です。
@@ -1335,56 +1371,29 @@
             }
             // ↑↑↑ この既存のキー操作のブロックはここで終わっています ↑↑↑
 
-            // ↓↓↓ ★★★ここから、前回追加したLキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
+            // ↓↓↓ 前回デバッグ用に追加したLキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を含んでいた）です！ ↓↓↓
+            // 通常クリアからの最終ボス移行を実装したので、このデバッグ用のLキーは不要になりました。
+            // 必要であれば残しておいても良いですが、混乱を防ぐためコメントアウト推奨です。
+            /*
             if (e.key === 'L' || e.key === 'l') { // Lキーが押されたかチェック
                 console.log("Level Skip to Final Boss Trigger!"); // Debug Log
                 // 現在のゲーム状態が、スキップを許可する状態かチェック
                 if (currentGameState !== GAME_STATE.LOADING && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
                      console.log("Changing state to FINAL_BOSS"); // Debug Log
-                    currentLevel = 30; // デバッグ用にレベルを最終レベルに設定
-                    currentGameState = GAME_STATE.FINAL_BOSS; // ゲーム状態を最終ボス戦に設定
+                    // currentLevel = 30; // startFinalBossBattle で設定される
+                    // currentGameState = GAME_STATE.FINAL_BOSS; // startFinalBossBattle で設定される
 
-                    // ここでインベーダーや通常ボス、敵弾をクリア (もし存在すれば)
-                    invaders = [];
-                    boss = null;
-                    invaderProjectiles = [];
-
-                    updateLevelDisplay(); // レベル表示を更新
-
-                    // ↓↓↓ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
-                     finalBoss = {
-                         x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // 中央に配置
-                         y: 30, // 上の方に配置
-                         width: BOSS_WIDTH * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
-                         height: BOSS_HEIGHT * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
-                         dx: 0, // この時点では動かしません。更新ロジックで動かします。
-                         dy: 0, // この時点では動かしません。
-                         hp: BOSS_HP_PER_LEVEL * MAX_LEVELS, // 最終ボスのHPは高い (全レベル分のHP相当)
-                         shootTimer: 0, // 射撃タイマー
-                         shootInterval: Math.max(30, 60 - (MAX_LEVELS - 1) * 5), // 射撃間隔 (難易度調整可能)
-                         radialShootTimer: 0, // 放射状ミサイル用タイマー
-                         radialShootInterval: Math.max(60, 100 - (MAX_LEVELS - 1) * 8), // 放射状ミサイル間隔 (難易度調整可能)
-                         isExploding: false, // 爆発中フラグ
-                         explosionTimer: 0, // 爆発タイマー
-                         explosionDuration: 60, // 爆発時間 (フレーム単位)
-                         originalImage: 'finalBoss', // ★最終ボス画像キーを使用★
-                         explosionImage: 'boss_explosion' // 爆発用画像のキー
-                     };
-                    // ↑↑↑ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
-
-                    // ↓↓↓ ★★★ここから音楽停止ロジックを追加！★★★ ↓↓↓
-                     if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
-                         loadedAudio.backgroundMusic.stop(); // 背景音楽を停止
-                         // 最終ボス戦用の音楽があればここで再生（今は停止のみ）
-                         // if (loadedAudio.finalBossMusic) { loadedAudio.finalBossMusic.play(); }
-                     }
-                    // ↑↑↑ ★★★音楽停止ロジック、ここまで！★★★
+                    // ここで startFinalBossBattle() を呼び出すこともできますが、
+                    // Lキーはデバッグ用スキップとしてシンプルに state と finalBoss だけをセットする方が役割が明確かもしれません。
+                    // 今回は Lキーは通常のゲーム進行とは別に、直接 finalBoss 状態に移行させる役割として定義します。
+                     startFinalBossBattle(); // Lキーで直接最終ボス戦を開始
 
                 } else {
                     console.log("Level Skip ignored: Game is not in a state where skip is allowed or already in FINAL_BOSS.");
                 }
             }
-            // ↑↑↑ ★★★ここまでが、Lキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
+            */
+            // ↑↑↑ Lキーのコードブロック、ここまで！ ↑↑↑
 
         } // handleKeyDown 関数の最後の閉じ波括弧
 
@@ -1509,6 +1518,22 @@
 
         // Call init when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', init);
+
+        // init Game - 最初のロードが完了したら呼ばれる
+        async function init() {
+             initGameEssentials(); // キャンバス設定やUI要素の取得、イベントリスナーの設定
+             await loadAssets(); // アセットのロード完了を待つ
+
+             // アセットロード完了後、スタート画面を表示
+             currentGameState = GAME_STATE.START_SCREEN;
+             showStartButton();
+
+             // BGMは startGame() で開始されます。
+             // animationFrameId = requestAnimationFrame(update); // ゲームループは startGame() または startFinalBossBattle() で開始するのが適切
+
+             console.log("Game initialized. State: START_SCREEN"); // Debug Log
+        }
+
 
         // ★★★ このscriptタグの中身全てを、お手元のscriptタグの中身全てと置き換えるのはここまでです ★★★
     </script>
