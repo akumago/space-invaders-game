@@ -1504,7 +1504,7 @@
                          playerTargetX = player.width / 2; // 左端に吸着（自機中央を左端+自機半径に）
                      } else if (targetXOnCanvas > rect.width - edgeThreshold) {
                           // 実際のゲーム座標に変換して設定
-                          playerTargetX = GAME_WIDTH - player.width / 2; // 右端に吸着（自機中央を右端-自機半径に）
+                          playerTargetX = GAME_WIDTH - player.width / 2; // 右端に吸機（自機中央を右端-自機半径に）
                      } else {
                          // Canvas表示領域内にクランプしてからゲーム座標に変換
                          targetXOnCanvas = Math.max(0, Math.min(targetXOnCanvas, rect.width)); // Canvas表示領域内にクランプ
