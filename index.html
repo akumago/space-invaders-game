@@ -491,38 +491,53 @@
                 // async は削除
                 // オーディオコンテキストアンロックと動画再生はここで行うのが最も確実
                 startButton.addEventListener('click', () => { // async を削除
-                    console.log(`Start button clicked. Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}, Audio unlocked: ${audioUnlocked}`); // Debug Log
-                    console.log("Starting start button click handler."); // Debug Log - Added
+                    console.log("--- Start button click handler started ---"); // Debug Log - Added at start
+                    console.log(`Current state: ${currentGameState}, Initial tap done: ${isInitialStartTapDone}, Audio unlocked: ${audioUnlocked}`); // Debug Log
 
                     // ユーザー操作（ボタンクリック）が発生したので、オーディオコンテキストのアンロックを試みる
                     unlockAudio();
-                    console.log("unlockAudio() called."); // Debug Log - Added
+                    console.log("unlockAudio() called."); // Debug Log
+
+                    // Howler.js がまだロードされていない場合など、Howlerが使用できない可能性も考慮
+                    if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'suspended') {
+                         // ボタンクリックはユーザー操作なので、ここで audio context を resume するのが最も確実
+                         Howler.ctx.resume().then(() => {
+                              console.log("Audio context resumed by button click."); // Debug Log
+                              audioUnlocked = true;
+                         }).catch(e => console.error("Audio context resume failed on button click:", e));
+                    } else if (typeof Howler !== 'undefined' && Howler.usingWebAudio && Howler.state === 'running') {
+                         console.log("Audio context is already running."); // Debug Log
+                         audioUnlocked = true;
+                    } else {
+                         console.log("Audio context is not applicable or Howler not ready."); // Debug Log
+                    }
 
 
                     if (currentGameState === GAME_STATE.START_SCREEN) {
-                        console.log(`Current state is START_SCREEN. isInitialStartTapDone: ${isInitialStartTapDone}`); // Debug Log - Added
+                        console.log(`Inside START_SCREEN state check. isInitialStartTapDone: ${isInitialStartTapDone}`); // Debug Log - Added
                         if (!isInitialStartTapDone) {
                             // 1回目のタップ：動画再生とボタンテキスト変更
                             console.log("First tap detected (TAP TO START)."); // Debug Log
 
                             if (backgroundVideo) {
-                                console.log("Background video element found."); // Debug Log - Added
+                                console.log("Background video element found. Attempting to unmute and set volume."); // Debug Log - Added
                                 backgroundVideo.muted = false; // ミュート解除を試みる
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                                console.log(`Attempting video play. Muted: ${backgroundVideo.muted}, Volume: ${backgroundVideo.volume}`); // Debug Log
+                                console.log(`Video muted set to ${backgroundVideo.muted}, Volume set to ${backgroundVideo.volume}`); // Debug Log - Added
 
+                                console.log("Attempting video play()."); // Debug Log - Added
                                 // 動画再生を試みる。play()はPromiseを返す
                                 // await は削除し、.then() と .catch() で非同期に処理結果を受け取る
                                 backgroundVideo.play().then(() => {
                                      // 再生が正常に始まった場合の処理
                                      console.log("Video playback started successfully."); // Debug Log
-                                     // 動画再生成功後に何か追加の処理が必要ならここに書く
                                 }).catch(e => {
                                      // 再生がブロックされたりエラーが発生した場合の処理
                                      console.warn("Video playback blocked or failed:", e.message); // Debug Log
                                     // ★動画再生に失敗しても、ゲーム開始に進めるようにフラグは立ててボタンテキストは変更する
                                 });
-                                console.log("Video play attempt initiated."); // Debug Log - Added
+                                console.log("Video play attempt initiated."); // Debug Log
+
 
                             } else {
                                  console.warn("Background video element not found during first tap."); // Debug Log
@@ -530,10 +545,11 @@
                             }
 
                             // ★動画再生の成否にかかわらず、最初のタップで必ずフラグを立て、ボタンテキストを変更する
-                            console.log("Updating isInitialStartTapDone and button text."); // Debug Log - Added
+                            console.log("Executing post-video-play-attempt logic (setting flag and button text)."); // Debug Log - Added
                             isInitialStartTapDone = true;
                             startButton.innerText = "START GAME";
-                            console.log("First tap logic complete. Button text changed to START GAME."); // Debug Log
+                            console.log("isInitialStartTapDone set to true, button text set to START GAME."); // Debug Log - Added
+                            console.log("First tap logic complete."); // Debug Log - Added
 
 
                         } else {
@@ -541,13 +557,14 @@
                              console.log("Second tap detected (START GAME). Attempting to start game."); // Debug Log
                             // ★2回目のタップであれば、動画再生の成否にかかわらずゲーム開始関数を呼び出す
                             startGame(true); // 新しいゲームを開始
+                            console.log("startGame(true) called."); // Debug Log - Added
                             // hideStartButton() は startGame 内で呼ばれる
 
                         }
                     } else {
                          console.log(`Start button clicked in state: ${currentGameState}. No action taken.`); // Debug Log
                     }
-                    console.log("End of start button click handler."); // Debug Log - Added
+                    console.log("--- Start button click handler finished ---"); // Debug Log - Added at end
                 });
 
                 // アセットロード完了後、最初のゲームループは startGame() または startFinalBossBattle() に任せるのが適切です。
