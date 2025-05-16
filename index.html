@@ -313,6 +313,16 @@
         // ボスの放射状ミサイル関連の定数
         const BOSS_RADIAL_PROJECTILE_COUNT_BASE = 3; // ボスの初期放射状ミサイル数
         const BOSS_RADIAL_SPREAD_ANGLE = Math.PI * 0.75; // 放射状に広がる角度（ラジアン、例: 135度）
+        // ★追加★ 最終ボス関連の定数
+        const FINAL_BOSS_WIDTH = 200; // 最終ボスの幅（例として通常のボスの約1.3倍）
+        const FINAL_BOSS_HEIGHT = 150; // 最終ボスの高さ
+        const FINAL_BOSS_HP = 30; // 最終ボスのHP（30発）
+        const FINAL_BOSS_SHOOT_INTERVAL = 90; // 最終ボスの発射間隔（フレーム数、例: 1.5秒に1回）
+        const HOMING_MISSILE_SPEED = 4; // ホーミングミサイルの速度（例として敵弾より少し速め）
+        const HOMING_MISSILE_TURN_SPEED = 0.05; // ホーミングミサイルの旋回速度（ラジアン/フレーム、値が大きいほど急旋回）
+        const HOMING_MISSILE_SIZE = 8; // ホーミングミサイルの表示サイズ（半径）
+        const HOMING_MISSILE_COLOR = '#ff0000'; // ホーミングミサイルの色（例: 赤）
+        const FINAL_BOSS_RADIAL_PROJECTILE_COUNT = 5; // 最終ボスが一度に発射するホーミング弾の数（例: 5発）
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -656,6 +666,56 @@
                 originalImage: 'boss',
                 explosionImage: 'boss_explosion'
             };
+        }// ★追加★ 最終ボスオブジェクトを生成する関数
+        function createFinalBoss() {
+            finalBoss = {
+                x: GAME_WIDTH / 2 - FINAL_BOSS_WIDTH / 2, // 画面中央上部に配置
+                y: 50, // Y座標は画面上部
+                width: FINAL_BOSS_WIDTH,
+                height: FINAL_BOSS_HEIGHT,
+                hp: FINAL_BOSS_HP, // 最終ボスのHP
+                shootTimer: 0, // 発射間隔を管理するタイマー
+                shootInterval: FINAL_BOSS_SHOOT_INTERVAL, // 最終ボスの発射間隔
+                isExploding: false, // 爆発アニメーション用
+                explosionTimer: 0,
+                explosionDuration: 50, // 爆発アニメーションの長さ（任意）
+                originalImage: 'finalBoss', // 最終ボス画像
+                explosionImage: 'boss_explosion' // 爆発画像
+            };
+        }
+        // ★追加★ 最終ボス戦を開始する関数
+        function startFinalBossBattle() {
+            currentGameState = GAME_STATE.FINAL_BOSS; // 状態を最終ボス戦に変更
+
+            // 残っているオブジェクトを全てクリア
+            invaders = [];
+            boss = null;
+            projectiles = []; // プレイヤーの弾も消す
+            invaderProjectiles = []; // 敵の弾も消す
+
+            createFinalBoss(); // 最終ボスを生成
+
+            // 最終ボス戦用の音楽があればここで再生
+             if (loadedAudio.finalBossMusic) {
+                 if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                     loadedAudio.backgroundMusic.stop(); // 元のBGMを停止
+                 }
+                 if (!loadedAudio.finalBossMusic.playing()) {
+                    loadedAudio.finalBossMusic.play();
+                    loadedAudio.finalBossMusic.loop(true);
+                    loadedAudio.finalBossMusic.volume(Howler.volume());
+                 }
+             } else if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                 // 最終ボス用BGMがない場合、元のBGMを継続
+                 loadedAudio.backgroundMusic.volume(Howler.volume()); // 音量を戻すなど
+             }
+
+            // ゲームループを再開（endGameで止まっているため）
+            lastTimestamp = performance.now();
+            animationFrameId = requestAnimationFrame(update);
+
+            // UIの更新など必要に応じてここに追加
+            updateLevelDisplay(); // レベル表示はMAXレベルのまま（または最終ボス戦表示に切り替え）
         }
 
         function startGame(isNewGame) {
@@ -684,7 +744,13 @@
             projectiles = [];
             invaderProjectiles = [];
 
-            createInvaders(); // まずインベーダーのみを生成
+           // 最終レベル以外はインベーダーを生成
+            if (currentLevel < MAX_LEVELS) {
+                createInvaders(); // まずインベーダーのみを生成
+            } else {
+                 // レベルMAXの場合はインベーダーは生成せず、直接通常ボスを生成（レベル30のボス戦）
+                 createBoss();
+            }
 
             updateScoreDisplay();
             updateLivesDisplay();
