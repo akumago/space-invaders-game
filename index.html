@@ -415,7 +415,7 @@
                             if (backgroundVideo) {
                                 backgroundVideo.muted = false; // ミュート解除
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                                backgroundVideo.play().catch(e => console.error("Video playback error on first tap:", e));
+                                
                                 backgroundVideo.style.display = 'block'; // 動画を表示
                                 backgroundVideo.style.zIndex = -1; // キャンバスより奥に配置
                             }
