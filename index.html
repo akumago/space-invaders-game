@@ -279,8 +279,6 @@
     </div>
 
     <script>
-        // ★★★ このscriptタグの中身全てを、お手元のscriptタグの中身全てと置き換えてください ★★★
-
         // --- Global Constants ---
         const GAME_WIDTH = 420;
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
@@ -313,6 +311,18 @@
         // ボスの放射状ミサイル関連の定数
         const BOSS_RADIAL_PROJECTILE_COUNT_BASE = 3; // ボスの初期放射状ミサイル数
         const BOSS_RADIAL_SPREAD_ANGLE = Math.PI * 0.75; // 放射状に広がる角度（ラジアン、例: 135度）
+        
+        // ★追加★ 最終ボス関連の定数
+        const FINAL_BOSS_WIDTH = 200; // 最終ボスの幅（例として通常のボスの約1.3倍）
+        const FINAL_BOSS_HEIGHT = 150; // 最終ボスの高さ
+        const FINAL_BOSS_HP = 30; // 最終ボスのHP（30発）
+        const FINAL_BOSS_SHOOT_INTERVAL = 90; // 最終ボスの発射間隔（フレーム数、例: 1.5秒に1回）
+        const HOMING_MISSILE_SPEED = 4; // ホーミングミサイルの速度（例として敵弾より少し速め）
+        const HOMING_MISSILE_TURN_SPEED = 0.05; // ホーミングミサイルの旋回速度（ラジアン/フレーム、値が大きいほど急旋回）
+        const HOMING_MISSILE_SIZE = 8; // ホーミングミサイルの表示サイズ（半径）
+        const HOMING_MISSILE_COLOR = '#ff0000'; // ホーミングミサイルの色（例: 赤）
+        const FINAL_BOSS_RADIAL_PROJECTILE_COUNT = 5; // 最終ボスが一度に発射するホーミング弾の数（例: 5発）
+
 
         const GAME_STATE = {
             LOADING: 'LOADING',
@@ -369,7 +379,10 @@
         // --- Initialization ---
 
         function init() {
+            console.log("init function started"); // ★この行を追加★
+        initGameEssentials();
             initGameEssentials();
+            showLoadingMessage(); // ロード開始時にローディングメッセージを表示
             loadAssets().then(() => {
                 hideLoadingMessage();
                 currentGameState = GAME_STATE.START_SCREEN;
@@ -405,9 +418,19 @@
                                 backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
                                 backgroundVideo.play().catch(e => console.error("Video playback error on first tap:", e));
                                 backgroundVideo.style.display = 'block'; // 動画を表示
+                                backgroundVideo.style.zIndex = -1; // キャンバスより奥に配置
                             }
                             startButton.innerText = "START GAME"; // ボタンのテキストを変更
                             isInitialStartTapDone = true; // フラグを立てる
+                             // BGMを再生（Howler.jsで管理）
+                            if (loadedAudio.backgroundMusic) {
+                                if (!loadedAudio.backgroundMusic.playing()) {
+                                    loadedAudio.backgroundMusic.play();
+                                    loadedAudio.backgroundMusic.loop(true);
+                                     // 音量スライダーの値が反映されるようにここでvolumeを設定
+                                    loadedAudio.backgroundMusic.volume(Howler.volume());
+                                }
+                            }
                         } else {
                             // 2回目のタップ：ゲーム開始
                             startGame(true); // 新しいゲームを開始
@@ -444,12 +467,8 @@
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none'; // 最初は隠す
                 backgroundVideo.muted = true; // 最初はミュートにする
+                 backgroundVideo.volume = 0; //念のため音量も0に
             }
-
-            // ★修正：Howler.jsの背景音楽はここで停止せず、startGameで制御する
-            // if (loadedAudio.backgroundMusic) {
-            //     loadedAudio.backgroundMusic.stop();
-            // }
 
             player = {
                 x: GAME_WIDTH / 2 - PLAYER_WIDTH / 2,
@@ -486,7 +505,6 @@
         }
 
         function loadAssets() {
-            showLoadingMessage();
             const imagePromises = [
                 // プレイヤーの画像
                 loadImage('player', 'image/invader3.png'),
@@ -501,12 +519,13 @@
                 loadImage('boss_explosion', 'image/explosion.png'),
 
                 // ★最終ボス画像を追加（ここでは通常ボスと同じ画像を再利用）★
-                loadImage('finalBoss', 'image/invader2.png'),
+                loadImage('finalBoss', 'image/final_boss.png'),
             ];
             const audioPromises = [
                 loadAudio('backgroundMusic', 'audio/bgm_amelo1.mp3'),
                 // 他のサウンドをここに追加ロードすることもできます (例: invaderHit, bossHit, bossExplosion, bossSpawn, playerHit)
                 loadAudio('shoot', 'audio/shoot.mp3'), // ★ミサイル音を有効化
+                 loadAudio('finalBossMusic', 'audio/boss_bgm.mp3') // ★最終ボス用BGMを追加★ (必要に応じてパスを変更)
                 // loadAudio('invaderHit', 'audio/invader_hit.mp3'),
                 // loadAudio('bossHit', 'audio/boss_hit.mp3'),
                 // loadAudio('bossExplosion', 'audio/boss_explosion.mp3'),
@@ -537,6 +556,9 @@
                         loadedAudio[name] = sound;
                         if (name === 'shoot') { // もし読み込んだ音がミサイル音(shoot)なら
                              sound.volume(0.05); // その音の個別音量を0.5に設定する (ここを調整！)
+                           }
+                         if (name === 'finalBossMusic') { // 最終ボスBGMの音量調整
+                             sound.volume(Howler.volume()); // グローバル音量に合わせる
                          }
                         resolve(); // 音声がロードされたらPromiseを解決
                     },
@@ -551,12 +573,12 @@
             startButtonContainer.style.display = 'none';
             messageBox.style.display = 'none';
             canvas.style.display = 'none';
-            if (backgroundVideo) {
-                backgroundVideo.style.display = 'none';
-                backgroundVideo.pause();
-                backgroundVideo.currentTime = 0;
-                backgroundVideo.muted = true;
-            }
+             if (backgroundVideo) {
+                 backgroundVideo.style.display = 'none';
+                 backgroundVideo.pause();
+                 backgroundVideo.currentTime = 0;
+                 backgroundVideo.muted = true;
+             }
         }
 
         function hideLoadingMessage() {
@@ -658,8 +680,56 @@
             };
         }
 
+        // ★追加★ 最終ボスオブジェクトを生成する関数
+        function createFinalBoss() {
+            finalBoss = {
+                x: GAME_WIDTH / 2 - FINAL_BOSS_WIDTH / 2, // 画面中央上部に配置
+                y: 50, // Y座標は画面上部
+                width: FINAL_BOSS_WIDTH,
+                height: FINAL_BOSS_HEIGHT,
+                hp: FINAL_BOSS_HP, // 最終ボスのHP
+                shootTimer: 0, // 発射間隔を管理するタイマー
+                shootInterval: FINAL_BOSS_SHOOT_INTERVAL, // 最終ボスの発射間隔
+                isExploding: false, // 爆発アニメーション用
+                explosionTimer: 0,
+                explosionDuration: 50, // 爆発アニメーションの長さ（任意）
+                originalImage: 'finalBoss', // 最終ボス画像
+                explosionImage: 'boss_explosion' // 爆発画像
+            };
+        }
+
+        // ★追加★ 最終ボス戦を開始する関数
+        function startFinalBossBattle() {
+            currentGameState = GAME_STATE.FINAL_BOSS; // 状態を最終ボス戦に変更
+
+            // 残っているオブジェクトを全てクリア
+            invaders = [];
+            boss = null;
+            projectiles = []; // プレイヤーの弾も消す
+            invaderProjectiles = []; // 敵の弾も消す
+
+            createFinalBoss(); // 最終ボスを生成
+
+            // 最終ボス戦用の音楽があればここで再生
+             if (loadedAudio.finalBossMusic) {
+                 if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                     loadedAudio.backgroundMusic.stop(); // 元のBGMを停止
+                 }
+                 if (!loadedAudio.finalBossMusic.playing()) {
+                    loadedAudio.finalBossMusic.play();
+                    loadedAudio.finalBossMusic.loop(true);
+                    loadedAudio.finalBossMusic.volume(Howler.volume());
+                 }
+             } else if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                 // 最終ボス用BGMがない場合、元のBGMを継続
+                 loadedAudio.backgroundMusic.volume(Howler.volume()); // 音量を戻すなど
+             }
+
+        
         function startGame(isNewGame) {
-            if (animationFrameId) {
+           console.log("startGame function started with isNewGame:", isNewGame); // ★この行を追加★
+        if (animationFrameId) {
+          
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
@@ -684,7 +754,13 @@
             projectiles = [];
             invaderProjectiles = [];
 
-            createInvaders(); // まずインベーダーのみを生成
+            // 最終レベル以外はインベーダーを生成
+            if (currentLevel < MAX_LEVELS) {
+                createInvaders(); // まずインベーダーのみを生成
+            } else {
+                 // レベルMAXの場合はインベーダーは生成せず、直接通常ボスを生成（レベル30のボス戦）
+                 createBoss();
+            }
 
             updateScoreDisplay();
             updateLivesDisplay();
@@ -696,68 +772,75 @@
             lastTimestamp = performance.now();
 
             // ★修正：音楽が既に再生中でなければ再生開始、ループを設定
-            if (loadedAudio.backgroundMusic && !loadedAudio.backgroundMusic.playing()) {
-                loadedAudio.backgroundMusic.play();
-                loadedAudio.backgroundMusic.loop(true); // ループを有効にする
-                loadedAudio.backgroundMusic.volume(Howler.volume());
-            }
+             if (loadedAudio.backgroundMusic && !loadedAudio.backgroundMusic.playing()) {
+                 loadedAudio.backgroundMusic.play();
+                 loadedAudio.backgroundMusic.loop(true); // ループを有効にする
+                 loadedAudio.backgroundMusic.volume(Howler.volume());
+             } else if (loadedAudio.finalBossMusic && loadedAudio.finalBossMusic.playing()) {
+                  // 最終ボス戦から戻った場合など、最終ボスBGMが再生中の場合は停止
+                  loadedAudio.finalBossMusic.stop();
+                  if (loadedAudio.backgroundMusic) {
+                      loadedAudio.backgroundMusic.play();
+                      loadedAudio.backgroundMusic.loop(true);
+                      loadedAudio.backgroundMusic.volume(Howler.volume());
+                  }
+             }
 
 
-            animationFrameId = requestAnimationFrame(update);
-
-            lastInvaderMoveDownTime = performance.now();
-        }
-
+        // ★修正★ endGame 関数全体を置き換え (レベルMAXクリアで最終ボスへ遷移)
         function endGame(win) {
-            currentGameState = GAME_STATE.GAME_OVER; // ゲーム状態を一時的にGAME_OVERに設定
             if (animationFrameId) {
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
 
-            // ★修正：ゲームオーバー（敗北）の場合のみBGMを停止
-            if (!win) {
-                if (loadedAudio.backgroundMusic) {
-                    loadedAudio.backgroundMusic.stop();
-                }
-            }
+            // BGMを停止するタイミングをここで一元管理
+             if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
+                 loadedAudio.backgroundMusic.stop();
+             }
+             if (loadedAudio.finalBossMusic && loadedAudio.finalBossMusic.playing()) {
+                 loadedAudio.finalBossMusic.stop();
+             }
 
-
-            // メッセージ表示中はキャンバスを表示するが、動画は非表示に保つ
+            // 共通の後処理：背景動画はゲームオーバー/クリア時も基本非表示に保つ（スタート画面に戻る時のみ表示）
             if (backgroundVideo) {
                 backgroundVideo.style.display = 'none';
                 backgroundVideo.pause();
                 backgroundVideo.currentTime = 0;
+                backgroundVideo.muted = true;
             }
-            canvas.style.display = 'block'; // キャンバスをメッセージボックスの背後に表示
+            canvas.style.display = 'block'; // ゲームオーバー/クリア画面でもキャンバスは表示しておく
 
             let message = '';
             const playAgainButton = messageBox.querySelector('button');
 
             if (win) {
-                if (currentLevel >= MAX_LEVELS && !finalBoss) { // 最終レベルクリアかつ最終ボスを倒した場合
-                    message = `You Win! Final Score: ${score}`;
-                    playAgainButton.innerText = "Play Again";
-                    playAgainButton.onclick = () => {
-                        hideMessageBox();
-                        showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
-                    };
-                    // 最終クリアまたはゲームオーバー時は背景動画を再表示
-                    if (backgroundVideo) {
-                        backgroundVideo.style.display = 'block';
-                        backgroundVideo.currentTime = 0;
-                        backgroundVideo.muted = false;
-                        backgroundVideo.volume = Howler.volume();
-                        backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
-                        backgroundVideo.style.zIndex = -1;
-                    }
-                    canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                    // ★最終クリア時もBGMは停止
-                    if (loadedAudio.backgroundMusic) {
-                        loadedAudio.backgroundMusic.stop();
-                    }
-                } else { // 中間レベルクリアの場合 または 通常ボス撃破で最終レベルに到達した場合
-                    if (currentLevel < MAX_LEVELS) { // 通常レベルクリア
+                // レベルクリア時または最終ボス撃破時
+                // currentLevel >= MAX_LEVELS かつボス/最終ボスがいない状態で win=true は最終クリアを意味する
+                if (currentLevel >= MAX_LEVELS && boss === null && finalBoss === null) {
+                     // ★最終クリア！
+                     message = `CONGRATULATIONS! YOU SAVED OUR SPACE! Final Score: ${score}`;
+                     playAgainButton.innerText = "Play Again";
+                     playAgainButton.onclick = () => {
+                         hideMessageBox();
+                         showStartButton(); // 全てリセットしてスタート画面へ
+                     };
+                     // ゲームクリア時はスタート画面用の動画を表示
+                     if (backgroundVideo) {
+                         backgroundVideo.style.display = 'block';
+                         backgroundVideo.currentTime = 0;
+                         backgroundVideo.muted = false;
+                         backgroundVideo.volume = Howler.volume();
+                         backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
+                         backgroundVideo.style.zIndex = -1;
+                     }
+                     canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
+
+
+                } else if (currentLevel < MAX_LEVELS || (currentLevel >= MAX_LEVELS && boss && boss.hp <= 0)) { // 通常レベルクリア または レベルMAXの通常ボス撃破
+                     // ★通常レベルクリア または レベルMAXの通常ボス撃破 -> 最終ボス戦へ移行または次のレベルへ
+                     if (currentLevel < MAX_LEVELS) {
+                          // 通常レベルクリア
                          message = `Level ${currentLevel} Clear! Score: ${score}`;
                          currentLevel++; // 次のレベルへ進む
                          playAgainButton.innerText = `Next Level (${currentLevel})`;
@@ -766,43 +849,29 @@
                              // 次のレベルへ直接移行し、最初のスタート画面に戻らない
                              startGame(false); // isNewGame=false で現在のスコア・ライフ・レベルを継続
                          };
-                         // 中間レベルクリア時は動画を非表示に保ち、次のゲームがすぐに始まるようにする
-                         canvas.style.display = 'block'; // キャンバスは表示したまま
-                         // ★中間レベルクリア時はBGMは停止しない（継続再生）
-                    } else { // MAX_LEVELS に到達したが最終ボスはまだ存在
-                         // 最終ボス戦へ移行するための処理をここに追加する必要があるかもしれません
-                         // 現在はLキーでスキップして最終ボス戦に入りますが、
-                         // 本来は最終レベルの通常ボス撃破で最終ボス戦が始まるロジックが必要です。
-                         // この endGame(true) は通常レベルクリアとして処理されます。
-                         // 最終ボス戦の開始ロジックは handleKeyDown のLキー部分や、
-                         // 通常ボス撃破後のレベルMAXチェック部分に追加する必要があります。
-                         // ここでは一旦、通常レベルクリアと同じ挙動にしておきます。
-                          message = `Level ${currentLevel} Clear! Preparing for Final Battle! Score: ${score}`;
-                          playAgainButton.innerText = `Continue`; // ボタンテキストを変更
-                          playAgainButton.onclick = () => {
-                              hideMessageBox();
-                              // 最終ボス戦を開始する関数をここで呼び出すなど
-                              // startFinalBossBattle(); // 仮の関数名
-                              // 現状はLキーでスキップして入る想定なので、ここでは何もしないか、
-                              // 再度ゲーム画面に戻してLキー入力を待つ形になります。
-                              // ゲーム画面に戻す処理：
-                                currentGameState = GAME_STATE.PLAYING; // PLAYINGに戻す
-                                lastTimestamp = performance.now();
-                                animationFrameId = requestAnimationFrame(update);
-                                // 必要に応じてプレイヤーの位置リセットなど
-                                player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
-                                player.movingLeft = false;
-                                player.movingRight = false;
-                                player.invincible = false;
-                                player.invincibleTimer = 0;
-                                player.blinkTimer = 0;
-                                invaders = []; // インベーダーは消しておく
-                                boss = null; // ボスも消しておく
-                                invaderProjectiles = []; // 敵弾も消しておく
-                          };
-                          canvas.style.display = 'block'; // キャンバスは表示したまま
-                           // BGMは停止しない
-                    }
+                     } else { // レベルMAXの通常ボス撃破
+                         // レベルMAXクリア！最終ボス戦へ移行するためのメッセージ
+                        message = `Level ${currentLevel} Clear! Prepare for the Final Battle! Score: ${score}`;
+                        playAgainButton.innerText = `Face the Final Boss`;
+                        playAgainButton.onclick = () => {
+                            hideMessageBox();
+                            // 最終ボス戦の準備と開始
+                            startFinalBossBattle(); // 新しい関数を呼び出す
+                        };
+                     }
+                     // 中間レベルクリアや最終ボス戦移行画面では動画を非表示に保ち、キャンバスを表示
+                     canvas.style.display = 'block';
+
+                } else {
+                     // 想定外のクリア状態の場合（デバッグ用）
+                     console.warn("Unknown win condition met.", { currentGameState, currentLevel, boss, finalBoss });
+                     message = `Level Clear? Score: ${score}`;
+                     playAgainButton.innerText = "Continue?";
+                      playAgainButton.onclick = () => {
+                         hideMessageBox();
+                         showStartButton(); // 安全のためスタート画面へ
+                     };
+                     canvas.style.display = 'block'; // 安全のためキャンバスを表示
                 }
             } else {
                 // ゲームオーバー（敗北）の場合
@@ -812,7 +881,7 @@
                     hideMessageBox();
                     showStartButton(); // 全てのゲーム状態をリセットし、最初の「TAP TO START」画面に戻る
                 };
-                // 最終クリアまたはゲームオーバー時は背景動画を再表示
+                // 最終クリアまたはゲームオーバー時はスタート画面用の動画を再表示
                 if (backgroundVideo) {
                     backgroundVideo.style.display = 'block';
                     backgroundVideo.currentTime = 0;
@@ -821,287 +890,447 @@
                     backgroundVideo.play().catch(e => console.error("Video playback error on game over/win:", e));
                     backgroundVideo.style.zIndex = -1;
                 }
-                canvas.style.display = 'none'; // 動画表示のためキャンバスを非表示
-                // ★ゲームオーバー時はBGM停止（上記で処理済み）
+                canvas.style.display = 'none'; // 動画表示中はキャンバスを非表示
             }
-            showMessage(message);
+
+            // GAME_OVER 状態に遷移
+            currentGameState = GAME_STATE.GAME_OVER; // メッセージ表示中は GAME_OVER 状態とする
+            showMessage(message); // メッセージボックスを表示
         }
 
-        // --- Game Loop ---
 
+        // ★修正★ update 関数全体を置き換え (最終ボス戦の更新処理を追加)
         function update(timestamp) {
-            const deltaTime = (timestamp - lastTimestamp) / 1000; // 秒単位
+            // ゲームオーバー状態の場合は更新処理を行わない
+            if (currentGameState === GAME_STATE.GAME_OVER) {
+                 return;
+            }
+
+            const deltaTime = (timestamp - lastTimestamp) / 1000; // 経過時間（秒）
             lastTimestamp = timestamp;
 
-            // ゲームがロード中、スタート画面、またはゲームオーバー状態の場合は更新処理の大部分をスキップ
-            // FINAL_BOSS状態でも更新処理は行います
-            if (currentGameState === GAME_STATE.LOADING || currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER) {
-                 draw(); // 静止画でも描画は必要
-                 animationFrameId = requestAnimationFrame(update); // ループを継続
-                 return; // 更新処理の本体はスキップ
-            }
+            // --- プレイヤーの移動 ---
+            // PLAYING または FINAL_BOSS 状態でのみプレイヤーは移動
+            if (currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) {
+                if (isPointerDown && playerTargetX !== null) {
+                    // ポインター/タッチ操作: ターゲット位置へ移動
+                    const playerCenter = player.x + player.width / 2;
+                    const distanceToTarget = playerTargetX - playerCenter;
+                    const moveAmount = PLAYER_SPEED;
 
-            // --- PLAYING 状態と FINAL_BOSS 状態共通の更新処理 ---
+                    if (distanceToTarget > 0 && Math.abs(distanceToTarget) > moveAmount / 2) {
+                        player.x += moveAmount;
+                    } else if (distanceToTarget < 0 && Math.abs(distanceToTarget) > moveAmount / 2) {
+                        player.x -= moveAmount;
+                    }
+                    // 画面端でのクランプ処理
+                    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
 
-            // Update player position
-            if (player.movingLeft && player.x > 0) {
-                player.x -= PLAYER_SPEED;
-            } else if (player.movingRight && player.x < GAME_WIDTH - player.width) {
-                player.x += PLAYER_SPEED;
-            } else if (playerTargetX !== null) {
-                const targetPlayerCenter = playerTargetX;
-                const currentPlayerCenter = player.x + player.width / 2;
+                    // 移動中に発射（タップ/クリック押しっぱなしで連射）
+                    if (playerShootCooldown <= 0) {
+                        createPlayerProjectile();
+                        if (loadedAudio.shoot) {
+                            loadedAudio.shoot.play();
+                        }
+                        playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                    }
 
-                if (Math.abs(targetPlayerCenter - currentPlayerCenter) > PLAYER_SPEED / 2) {
-                    if (targetPlayerCenter < currentPlayerCenter) {
+                } else {
+                    // キーボード操作
+                    if (player.movingLeft) {
                         player.x -= PLAYER_SPEED;
-                    } else {
+                    }
+                    if (player.movingRight) {
                         player.x += PLAYER_SPEED;
                     }
+                    // 画面端でのクランプ処理
+                    player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
                 }
-                // 自機が画面外に出ないようにクランプ
-                player.x = Math.max(0, Math.min(player.x, GAME_WIDTH - player.width));
-            }
 
-            // Player shooting cooldown
-            if (playerShootCooldown > 0) {
-                playerShootCooldown -= deltaTime * 60; // フレーム単位で計算（暫定）
-            }
-            // ポインタが押されている間、クールダウンが完了していれば発射
-            if (isPointerDown && playerShootCooldown <= 0) {
-                shootProjectile();
-            }
+                // プレイヤーの発射クールダウン
+                if (playerShootCooldown > 0) {
+                    playerShootCooldown--;
+                }
 
-            // Update projectiles (自機の弾)
-            projectiles.forEach(p => p.y -= PLAYER_PROJECTILE_SPEED);
-            projectiles = projectiles.filter(p => p.y > 0);
-
-            // Update invader projectiles (敵弾 - 通常敵とボス、最終ボス含む)
-            invaderProjectiles.forEach(p => {
-                p.x += p.dx * deltaTime * 60; // dx/dyはフレーム単位速度を想定し、deltaTimeで補正（暫定）
-                p.y += p.dy * deltaTime * 60;
-            });
-            invaderProjectiles = invaderProjectiles.filter(p => p.y < GAME_HEIGHT && p.x > -p.width && p.x < GAME_WIDTH + p.width);
-
-            // Player invincibility timer
-            if (player.invincible) {
-                player.invincibleTimer++;
-                player.blinkTimer++;
-                if (player.invincibleTimer >= 120) { // 2 seconds (60 frames/sec * 2)
-                    player.invincible = false;
-                    player.invincibleTimer = 0;
-                    player.blinkTimer = 0; // Reset blink timer
+                 // プレイヤーの無敵時間の更新
+                if (player && player.invincible) { // player オブジェクトが存在するか確認
+                    player.invincibleTimer--;
+                    player.blinkTimer++; // 点滅タイマーを進行
+                    if (player.invincibleTimer <= 0) {
+                        player.invincible = false;
+                        player.blinkTimer = 0; // 無敵終了時に点滅タイマーもリセット
+                    }
                 }
             }
 
-            // --- 各ゲーム状態ごとの固有の更新処理 ---
 
-            // PLAYING 状態の更新処理
+            // --- インベーダーの更新 ---
+            // PLAYING 状態でのみインベーダーを更新
             if (currentGameState === GAME_STATE.PLAYING) {
-                // ★インベーダーグループ全体の移動処理 (deltaTime対応)
-                if (invaders.length > 0) {
-                    let minX = Infinity;
-                    let maxX = -Infinity;
-                    const currentDirection = invaders[0].dx > 0 ? 1 : -1; // 現在の進行方向を明確に
+                let hitSide = false;
+                for (let i = 0; i < invaders.length; i++) {
+                    const invader = invaders[i];
+                    invader.x += invader.dx * deltaTime;
 
-                    invaders.forEach(invader => {
-                        invader.x += invader.dx * deltaTime; // deltaTimeを掛けて速度調整
-                        minX = Math.min(minX, invader.x);
-                        maxX = Math.max(maxX, invader.x + invader.width);
-                    });
-
-                    let reverseDirection = false;
-                    // 速度に応じて端判定の許容量を調整
-                    const penetrationAmount = Math.abs(invaders[0].dx * deltaTime * 2);
-
-                    if (minX < 0 + penetrationAmount && currentDirection < 0) {
-                        reverseDirection = true;
-                    } else if (maxX > GAME_WIDTH - penetrationAmount && currentDirection > 0) {
-                         reverseDirection = true;
+                    // 端に到達したらフラグを立てる
+                    if (invader.x + invader.width > canvas.width || invader.x < 0) {
+                        hitSide = true;
                     }
 
-                    if (reverseDirection) {
-                        invaders.forEach(invader => {
-                            invader.dx *= -1; // 水平速度を反転
-                            const nudge = (invader.dx > 0 ? penetrationAmount : -penetrationAmount);
-                             invader.x += nudge; // 端からの押し戻し
-                        });
-
-                         // 方向転換と同時に下へ移動（時間間隔のチェックは維持）
-                        const currentTime = performance.now();
-                        if (currentTime - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
-                             invaders.forEach(invader => {
-                                 invader.y += INVADER_MOVE_DOWN_AMOUNT;
-                                 // ゲームオーバー判定
-                                 if (invader.y + invader.height > player.y - player.height / 2) { // 自機の中央Y座標あたりで判定
-                                     endGame(false); // インベーダーがプレイヤーのラインを超えたらゲームオーバー
-                                     return; // ゲームオーバーなので以降の処理は不要
-                                 }
-                             });
-                             lastInvaderMoveDownTime = currentTime;
-                        }
+                    // ランダムなタイミングで弾を発射
+                    if (Math.random() < 0.002 + (currentLevel - 1) * 0.00015) {
+                        createInvaderProjectile(invader.x + invader.width / 2, invader.y + invader.height);
                     }
 
-                    // 個々のインベーダーが画面外に出ないようにクランプ
-                    invaders.forEach(invader => {
-                         invader.x = Math.max(0, Math.min(invader.x, GAME_WIDTH - invader.width));
-                    });
-                }
-
-                // Invader shooting (PLAYING状態かつインベーダーが存在する場合)
-                if (invaders.length > 0) {
-                    const randomInvader = invaders[Math.floor(Math.random() * invaders.length)];
-                    const baseInvaderShootInterval = 90;
-                    const intervalDecreasePerLevel = 3;
-                    const currentInvaderShootInterval = Math.max(30, baseInvaderShootInterval - (currentLevel - 1) * intervalDecreasePerLevel);
-
-                    if (Math.random() < 1 / currentInvaderShootInterval) {
-                        invaderProjectiles.push({
-                            x: randomInvader.x + randomInvader.width / 2 - 2.5,
-                            y: randomInvader.y + randomInvader.height,
-                            width: 5,
-                            height: 10,
-                            dx: 0,
-                            dy: ENEMY_PROJECTILE_SPEED,
-                            type: 'invader'
-                        });
+                    // インベーダーがプレイヤーの高さに到達したらゲームオーバー
+                    if (invader.y + invader.height > player.y - 20) {
+                        endGame(false); // Game Over
+                        return; // Stop updating
                     }
                 }
 
-                 // ★★★ここが通常ボス出現のロジックです！★★★
-                // インベーダー全滅かつ、まだ通常ボスが生成されていない場合
-                if (invaders.length === 0 && !boss && !bossCreatedForThisLevel && currentLevel < MAX_LEVELS) { // MAX_LEVELS未満のレベルでのみ通常ボスを生成
-                     console.log(`Invaders cleared on Level ${currentLevel}. Spawning Boss!`); // Debug Log
-                     createBoss(); // 通常ボスを生成
-                     bossCreatedForThisLevel = true; // このレベルでボスは生成済みとする
-                     // 通常ボス出現音があれば再生 (loadedAudio.bossSpawnなど)
+                // 端に到達したインベーダーがいたら全体を一段階下に移動し、方向を反転
+                const currentTime = performance.now();
+                if (hitSide) {
+                     invaders.forEach(invader => { invader.dx *= -1; });
+                     invaders.forEach(invader => { invader.y += INVADER_MOVE_DOWN_AMOUNT; });
+                     lastInvaderMoveDownTime = currentTime;
+                } else if (currentTime - lastInvaderMoveDownTime > INVADER_MOVE_DOWN_INTERVAL) {
+                    invaders.forEach(invader => { invader.y += INVADER_MOVE_DOWN_AMOUNT; });
+                    lastInvaderMoveDownTime = currentTime;
                 }
-                 // ★★★通常ボス出現のロジック、ここまで！★★★
-
-
-                // Boss movement and shooting (PLAYING状態かつ通常ボスが存在する場合)
-                if (boss && !boss.isExploding) { // ボスが爆発中でなければ更新
-                    boss.x += boss.dx * deltaTime;
-
-                    if (boss.x + boss.width > GAME_WIDTH || boss.x < 0) {
-                        boss.dx *= -1;
-                        if (boss.x + boss.width > GAME_WIDTH) boss.x = GAME_WIDTH - boss.width;
-                        else if (boss.x < 0) boss.x = 0;
-                    }
-
-                    boss.shootTimer++;
-                    if (boss.shootTimer >= boss.shootInterval) {
-                        // 通常弾
-                        invaderProjectiles.push({
-                            x: boss.x + boss.width / 2 - 2.5,
-                            y: boss.y + boss.height,
-                            width: 7, height: 14, dx: 0, dy: ENEMY_PROJECTILE_SPEED * 1.5, type: 'boss_straight'
-                        });
-                        // 放射状ミサイル
-                        const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(currentLevel / 2);
-                        const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
-                        for (let i = 0; i < radialCount; i++) {
-                            const angle = startAngle + (radialCount > 1 ? BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1) : 0) * i; // 弾が1つの場合は角度ステップは0
-                            invaderProjectiles.push({
-                                x: boss.x + boss.width / 2 - 2.5,
-                                y: boss.y + boss.height,
-                                width: 7, height: 14, dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED, dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED, type: 'boss_radial'
-                            });
-                        }
-                        // if (loadedAudio.bossShoot) { loadedAudio.bossShoot.play(); }
-                        boss.shootTimer = 0;
-                    }
-                } else if (boss && boss.isExploding) { // 通常ボス爆発中
-                    boss.explosionTimer++;
-                    if (boss.explosionTimer >= boss.explosionDuration) {
-                        boss = null; // 爆発アニメーション終了後、ボスを消滅させる
-                        score += 5000 * currentLevel; // ボス撃破ボーナス
-                        updateScoreDisplay();
-                        // 通常レベルクリア判定 (インベーダーと通常ボス両方いない場合) - これは boss=null になった直後にチェック
-                        if (invaders.length === 0 && !boss && currentLevel < MAX_LEVELS) {
-                            endGame(true); // 通常レベルクリア画面へ移行
-                        } else if (invaders.length === 0 && !boss && currentLevel >= MAX_LEVELS) {
-                             // MAX_LEVELSで通常ボスを倒した場合の処理
-                             // ここで最終ボス戦開始の準備を行うか、endGame(true)でクリアメッセージを出すか選択
-                             // 今回はLキーで最終ボス戦にスキップするので、ここでは endGame(true) でクリアメッセージを出すのみにしておく
-                             endGame(true); // MAXレベルの通常ボス撃破でも一旦クリア画面へ（本来は最終ボス戦へ）
-                        }
-                    }
-                }
-
-                // 通常レベルクリア判定 (インベーダー全滅かつ通常ボス撃破後)
-                // これはボス撃破時の処理内に移動したのでここでは削除
-                // if (invaders.length === 0 && !boss && currentLevel < MAX_LEVELS) {
-                //     endGame(true);
-                // }
             }
 
-            // ★★★ここから FINAL_BOSS 状態の更新処理！★★★
-            if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss) {
-                 if (!finalBoss.isExploding) { // 最終ボスが爆発中でなければ更新
-                     // 最終ボスの移動ロジック（必要であれば実装、この時点では停止）
-                     // finalBoss.x += finalBoss.dx * deltaTime;
 
-                     // 最終ボスの射撃タイマーを更新
-                     finalBoss.shootTimer++;
-                     finalBoss.radialShootTimer++; // 放射状ミサイル用タイマーも更新
+            // --- 通常ボスの更新 (PLAYING 状態かつボスがいるときのみ) ---
+            if (currentGameState === GAME_STATE.PLAYING && boss && !boss.isExploding) {
+                boss.x += boss.dx * deltaTime;
 
-                     // 最終ボスの通常弾の発射
-                     if (finalBoss.shootTimer >= finalBoss.shootInterval) {
-                         invaderProjectiles.push({
-                             x: finalBoss.x + finalBoss.width / 2 - 3.5,
-                             y: finalBoss.y + finalBoss.height,
-                             width: 7, height: 14, dx: 0, dy: ENEMY_PROJECTILE_SPEED * 1.8, type: 'finalboss_straight'
-                         });
-                         finalBoss.shootTimer = 0;
-                     }
+                // 端に到達したら方向反転
+                if (boss.x + boss.width > canvas.width || boss.x < 0) {
+                    boss.dx *= -1;
+                }
 
-                     // 最終ボスの放射状ミサイルの発射
-                     if (finalBoss.radialShootTimer >= finalBoss.radialShootInterval) {
-                          const radialCount = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor(MAX_LEVELS / 5); // 最終ボスなので固定数または最大レベル基準
-                          const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
-                          const angleStep = radialCount > 1 ? BOSS_RADIAL_SPREAD_ANGLE / (radialCount - 1) : 0; // 弾が1つの場合は角度ステップは0
+                // ボスの発射タイマー
+                boss.shootTimer++;
+                if (boss.shootTimer >= boss.shootInterval) {
+                     createBossRadialProjectiles(boss.x + boss.width / 2, boss.y + boss.height);
+                     boss.shootTimer = 0;
+                }
+            } else if (currentGameState === GAME_STATE.PLAYING && boss && boss.isExploding) {
+                // ボス爆発アニメーションの更新
+                boss.explosionTimer--;
+                if (boss.explosionTimer <= 0) {
+                    boss = null; // 爆発アニメーション終了後にボスオブジェクトを削除
+                }
+            }
 
-                          for (let i = 0; i < radialCount; i++) {
-                               const angle = startAngle + i * angleStep;
-                               invaderProjectiles.push({
-                                    x: finalBoss.x + finalBoss.width / 2 - 3.5,
-                                    y: finalBoss.y + finalBoss.height,
-                                    width: 7, height: 14, dx: Math.cos(angle) * ENEMY_PROJECTILE_SPEED * 1.5, dy: Math.sin(angle) * ENEMY_PROJECTILE_SPEED * 1.5, type: 'finalboss_radial'
-                               });
-                          }
-                          finalBoss.radialShootTimer = 0;
-                     }
 
-                 } else { // 最終ボスが爆発中の処理
-                     finalBoss.explosionTimer++;
-                     if (finalBoss.explosionTimer >= finalBoss.explosionDuration) {
-                         finalBoss = null; // 爆発アニメーション終了後、最終ボスを消滅させる
-                         score += 10000 * MAX_LEVELS; // 最終ボス撃破ボーナス
-                         updateScoreDisplay();
-                         // 最終ゲームクリア処理へ
-                         endGame(true); // ゲームクリア
-                     }
+            // ★追加★ 最終ボスの更新 (FINAL_BOSS 状態かつ最終ボスがいるときのみ) ---
+             if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && !finalBoss.isExploding) {
+                 // 最終ボスは動かないので位置更新は不要
+
+                 // 最終ボスの発射タイマー
+                 finalBoss.shootTimer++;
+                 if (finalBoss.shootTimer >= finalBoss.shootInterval) {
+                     createHomingMissiles(finalBoss.x + finalBoss.width / 2, finalBoss.y + finalBoss.height);
+                     finalBoss.shootTimer = 0;
+                 }
+             } else if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && finalBoss.isExploding) {
+                 // 最終ボス爆発アニメーションの更新
+                 finalBoss.explosionTimer--;
+                 if (finalBoss.explosionTimer <= 0) {
+                     // 最終ボス撃破！ゲームクリア！
+                     finalBoss = null;
+                     endGame(true); // ゲームクリア処理を呼び出す
+                     return; // Stop updating
+                 }
+             }
+
+
+            // --- ゲームクリア判定 (PLAYING 状態でのみ) ---
+            // インベーダーが全滅し、かつ通常ボスがいない場合、レベルクリア（または最終ボス戦へ）
+            // PLAYING状態でのみ判定し、ボスがいないことを確認してから判定
+            if (currentGameState === GAME_STATE.PLAYING && invaders.length === 0 && boss === null) {
+                 // レベルMAXの場合は最終ボス戦へ移行、それ以外は次のレベルへ
+                 if (currentLevel >= MAX_LEVELS) {
+                      // レベルMAXクリア。endGame(true)で最終ボス戦移行画面へ
+                      // endGame(true) の中で状態が GAME_OVER (メッセージ表示) に遷移する（ボタンタップで FINAL_BOSS へ）
+                      endGame(true);
+                      return; // update ループを抜ける
+                 } else {
+                      // 通常レベルクリア。endGame(true)で次のレベル開始画面へ
+                      // endGame(true) の中で状態が GAME_OVER (メッセージ表示) になり、ボタンタップで次のレベルが始まる
+                      endGame(true);
+                      return; // update ループを抜ける
                  }
             }
-            // ★★★ FINAL_BOSS 状態の更新処理、ここまで！★★★
 
-            // Collision detection (PLAYING 状態と FINAL_BOSS 状態の両方でチェック)
-            checkCollisions(); // この関数内で FINAL_BOSS 状態の衝突判定も処理されます。
 
-            // ゲームオーバー判定 (ライフ0になったら) - updateの最後の方でチェック
-            if (lives <= 0 && currentGameState !== GAME_STATE.GAME_OVER) { // すでにゲームオーバー状態で重複して呼ばれないようにチェックを追加
-                endGame(false); // ゲームオーバー
+            // --- プレイヤーの弾の更新 ---
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const projectile = projectiles[i];
+                projectile.y -= projectile.speed;
+
+                // 画面外に出たプレイヤーの弾を削除
+                if (projectile.y + projectile.height < 0) {
+                    projectiles.splice(i, 1);
+                }
             }
 
-            draw(); // 描画関数を呼び出す
-            animationFrameId = requestAnimationFrame(update); // 次のフレームを予約
+
+            // --- 敵の弾 (インベーダー・ボス・最終ボス) の更新 ---
+            for (let i = invaderProjectiles.length - 1; i >= 0; i--) {
+                const projectile = invaderProjectiles[i];
+
+                // ★追加★ ホーミングミサイルの追尾処理 (FINAL_BOSS 状態かつホーミング弾の場合のみ)
+                if (projectile.isHoming && player && currentGameState === GAME_STATE.FINAL_BOSS) {
+                    const targetX = player.x + player.width / 2;
+                    const targetY = player.y + player.height / 2;
+                    const projectileCenterX = projectile.x + projectile.radius;
+                    const projectileCenterY = projectile.y + projectile.radius;
+
+                    const deltaX = targetX - projectileCenterX;
+                    const deltaY = targetY - projectileCenterY;
+
+                    const currentAngle = Math.atan2(projectile.dy, projectile.dx);
+                    const targetAngle = Math.atan2(deltaY, deltaX);
+
+                    let angleDiff = targetAngle - currentAngle;
+                    if (angleDiff > Math.PI) angleDiff -= 2 * Math.PI;
+                    if (angleDiff < -Math.PI) angleDiff += 2 * Math.PI;
+
+                    const turn = Math.max(-HOMING_MISSILE_TURN_SPEED, Math.min(HOMING_MISSILE_TURN_SPEED, angleDiff));
+                    const newAngle = currentAngle + turn;
+
+                    projectile.dx = Math.cos(newAngle) * HOMING_MISSILE_SPEED;
+                    projectile.dy = Math.sin(newAngle) * HOMING_MISSILE_SPEED;
+
+                    projectile.x += projectile.dx;
+                    projectile.y += projectile.dy;
+
+                } else { // 通常の敵弾の場合
+                     if (projectile.hasOwnProperty('dx') && projectile.hasOwnProperty('dy')) {
+                          // dx, dy を持つ弾（通常ボスの放射状弾など）
+                         projectile.x += projectile.dx;
+                         projectile.y += projectile.dy;
+                     } else if (projectile.hasOwnProperty('speed')) {
+                         // speed を持つ弾（通常のインベーダーの弾など）
+                         projectile.y += projectile.speed; // 下方向にのみ移動
+                     }
+                }
+
+                // 画面外に出た敵の弾を削除
+                // ホーミングミサイルも含むので横方向の判定も必要
+                if (projectile.y > canvas.height + 20 || projectile.x < -20 || projectile.x > canvas.width + 20) {
+                    invaderProjectiles.splice(i, 1);
+                }
+            }
+
+
+            // --- 衝突判定 ---
+            // プレイヤーの弾と敵（インベーダー、通常ボス、最終ボス）の衝突
+            // 敵の弾とプレイヤーの衝突
+            // 判定処理は PLAYING または FINAL_BOSS 状態でのみ実行
+
+            // プレイヤーの弾 vs インベーダー (PLAYING 状態のときのみ)
+            if (currentGameState === GAME_STATE.PLAYING) {
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const projectile = projectiles[i];
+                    for (let j = invaders.length - 1; j >= 0; j--) {
+                        const invader = invaders[j];
+
+                        if (projectile.x < invader.x + invader.width &&
+                            projectile.x + projectile.width > invader.x &&
+                            projectile.y < invader.y + invader.height &&
+                            projectile.y + projectile.height > invader.y) {
+
+                            projectiles.splice(i, 1);
+                            invaders.splice(j, 1);
+                            score += 10;
+                            updateScoreDisplay();
+                            // if (loadedAudio.invaderHit) loadedAudio.invaderHit.play();
+
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // プレイヤーの弾 vs 通常ボス (PLAYING 状態かつボスがいるときのみ)
+            if (currentGameState === GAME_STATE.PLAYING && boss && !boss.isExploding) {
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const projectile = projectiles[i];
+
+                    if (projectile.x < boss.x + boss.width &&
+                        projectile.x + projectile.width > boss.x &&
+                        projectile.y < boss.y + boss.height &&
+                        projectile.y + projectile.height > boss.y) {
+
+                        projectiles.splice(i, 1);
+                        boss.hp--;
+                        score += 50;
+                        updateScoreDisplay();
+                        // if (loadedAudio.bossHit) loadedAudio.bossHit.play();
+
+                        if (boss.hp <= 0) {
+                            boss.isExploding = true;
+                            boss.explosionTimer = boss.explosionDuration;
+                            score += 500;
+                            updateScoreDisplay();
+                            // if (loadedAudio.bossExplosion) loadedAudio.bossExplosion.play();
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // ★追加★ プレイヤーの弾 vs 最終ボス (FINAL_BOSS 状態かつ最終ボスがいるときのみ)
+            if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && !finalBoss.isExploding) {
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const projectile = projectiles[i];
+
+                    if (projectile.x < finalBoss.x + finalBoss.width &&
+                        projectile.x + finalBoss.width > finalBoss.x &&
+                        projectile.y < finalBoss.y + finalBoss.height &&
+                        projectile.y + finalBoss.height > finalBoss.y) {
+
+                        projectiles.splice(i, 1);
+                        finalBoss.hp--;
+                        score += 100;
+                        updateScoreDisplay();
+                        // if (loadedAudio.bossHit) loadedAudio.bossHit.play();
+
+                        if (finalBoss.hp <= 0) {
+                            finalBoss.isExploding = true;
+                            finalBoss.explosionTimer = finalBoss.explosionDuration * 2;
+                            score += 5000;
+                            updateScoreDisplay();
+                            // if (loadedAudio.bossExplosion) loadedAudio.bossExplosion.play();
+                        }
+                        break;
+                    }
+                }
+            }
+
+
+            // 敵の弾 (インベーダー・ボス・最終ボス) vs プレイヤー
+            // PLAYING または FINAL_BOSS 状態でのみ、かつプレイヤーが無敵でない場合、かつライフが0より大きい場合のみ判定
+            if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && player && !player.invincible && lives > 0) {
+                for (let i = invaderProjectiles.length - 1; i >= 0; i--) {
+                    const projectile = invaderProjectiles[i];
+
+                    // 衝突判定: ホーミングミサイルは円だが bounding box で判定
+                    const projLeft = projectile.x;
+                    const projRight = projectile.x + (projectile.isHoming ? projectile.radius * 2 : projectile.width);
+                    const projTop = projectile.y;
+                    const projBottom = projectile.y + (projectile.isHoming ? projectile.radius * 2 : projectile.height);
+
+                    const playerLeft = player.x;
+                    const playerRight = player.x + player.width;
+                    const playerTop = player.y;
+                    const playerBottom = player.y + player.height;
+
+
+                    if (projRight > playerLeft &&
+                        projLeft < playerRight &&
+                        projBottom > playerTop &&
+                        projTop < playerBottom) {
+
+                        invaderProjectiles.splice(i, 1);
+                        lives--;
+                        updateLivesDisplay();
+                        // if (loadedAudio.playerHit) loadedAudio.playerHit.play();
+
+                        player.invincible = true;
+                        player.invincibleTimer = 120;
+                        player.blinkTimer = 0;
+
+                        if (lives <= 0) {
+                            endGame(false); // Game Over
+                            return; // Stop updating
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // プレイヤーの無敵時間の更新 (endGame で return しなかった場合のみ)
+             if (player && player.invincibleTimer > 0) {
+                 player.invincibleTimer--;
+                 player.blinkTimer++;
+                 if (player.invincibleTimer <= 0) {
+                     player.invincible = false;
+                     player.blinkTimer = 0;
+                 }
+             }
+
+
+            animationFrameId = requestAnimationFrame(update);
+        }
+
+        // ★追加★ ボスが放射状の弾を発射する関数
+        function createBossRadialProjectiles(startX, startY) {
+            const count = BOSS_RADIAL_PROJECTILE_COUNT_BASE + Math.floor((currentLevel - 1) / 5);
+            const angleStep = BOSS_RADIAL_SPREAD_ANGLE / Math.max(1, count - 1);
+            const startAngle = Math.PI / 2 - BOSS_RADIAL_SPREAD_ANGLE / 2;
+
+            for (let i = 0; i < count; i++) {
+                const angle = startAngle + angleStep * i;
+                 const bulletSpeed = ENEMY_PROJECTILE_SPEED * 1.2;
+                const dx = Math.cos(angle) * bulletSpeed;
+                const dy = Math.sin(angle) * bulletSpeed;
+                createInvaderProjectile(startX, startY, bulletSpeed, false, dx, dy);
+            }
+        }
+
+        // ★追加★ ホーミングミサイルを生成する関数
+        function createHomingMissiles(startX, startY) {
+            const count = FINAL_BOSS_RADIAL_PROJECTILE_COUNT;
+            const initialAngle = Math.PI / 2;
+
+            for (let i = 0; i < count; i++) {
+                const dx = Math.cos(initialAngle) * HOMING_MISSILE_SPEED;
+                const dy = Math.sin(initialAngle) * HOMING_MISSILE_SPEED;
+                createInvaderProjectile(startX + (i - (count - 1) / 2) * (HOMING_MISSILE_SIZE * 2), startY, HOMING_MISSILE_SPEED, true, dx, dy);
+            }
+        }
+
+        // 通常の敵弾を生成する関数（ホーミング弾と区別するために修正）
+        // dx, dy を持つ放射状の弾にも対応できるよう汎用的に修正
+        function createInvaderProjectile(x, y, speed = ENEMY_PROJECTILE_SPEED, isHoming = false, dx = 0, dy = speed) {
+             // ホーミング弾の場合は radius を設定
+             const radius = isHoming ? HOMING_MISSILE_SIZE : 0;
+             const width = isHoming ? radius * 2 : 5; // 通常弾の幅
+             const height = isHoming ? radius * 2 : 10; // 通常弾の高さ
+
+            invaderProjectiles.push({
+                x: x - width / 2, // 弾の中心を発射位置に合わせる
+                y: y - height / 2, // 弾の中心を発射位置に合わせる
+                width: width,
+                height: height,
+                radius: radius, // ホーミング弾用
+                speed: speed, // 通常弾の速度として保持
+                dx: dx, // 速度ベクトルX
+                dy: dy, // 速度ベクトルY
+                isHoming: isHoming // ホーミング弾であるかどうかのフラグ
+            });
+        }
+
+        // プレイヤーの弾を生成する関数
+        function createPlayerProjectile() {
+            projectiles.push({
+                x: player.x + player.width / 2 - 2.5, // 弾の幅の半分を考慮して中央に
+                y: player.y,
+                width: 5,
+                height: 10,
+                speed: PLAYER_PROJECTILE_SPEED
+            });
         }
 
         // --- Drawing Functions ---
-        // ... (draw 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
-
         function draw() {
+             console.log("--- draw() call ---");
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
             // Draw player
@@ -1160,7 +1389,7 @@
                 }
             }
 
-            // ★★★ここから FINAL_BOSS 状態の描画処理を追加！★★★
+            // ★追加★ 最終ボスの描画 (FINAL_BOSS 状態かつ最終ボスがいるときのみ)
              if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss) {
                  if (finalBoss.isExploding && loadedImages[finalBoss.explosionImage]) {
                      // 最終ボス爆発のアニメーションを描画 (通常ボスと同じロジックを流用)
@@ -1178,18 +1407,19 @@
                      );
 
                  } else if (loadedImages[finalBoss.originalImage]) {
-                    // 最終ボスの画像を描画
-                    ctx.drawImage(loadedImages[finalBoss.originalImage], finalBoss.x, finalBoss.y, finalBoss.width, finalBoss.height);
+                     // 最終ボスの画像を描画
+                     ctx.drawImage(loadedImages[finalBoss.originalImage], finalBoss.x, finalBoss.y, finalBoss.width, finalBoss.height);
 
-                    // 最終ボスのHPバーを描画
-                    const hpBarWidth = finalBoss.width * 0.9; // HPバーを少し大きく
-                    const hpBarHeight = 7; // HPバーを少し太く
-                    const hpBarX = finalBoss.x + (finalBoss.width - hpBarWidth) / 2;
-                    const hpBarY = finalBoss.y + finalBoss.height + 10; // 少し下に表示
+                     // 最終ボスのHPバーを描画
+                     const hpBarWidth = finalBoss.width * 0.9; // HPバーを少し大きく
+                     const hpBarHeight = 7; // HPバーを少し太く
+                     const hpBarX = finalBoss.x + (finalBoss.width - hpBarWidth) / 2;
+                     const hpBarY = finalBoss.y + finalBoss.height + 10; // 少し下に表示
 
-                    ctx.fillStyle = 'red'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-                    ctx.fillStyle = 'lime'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (finalBoss.hp / (BOSS_HP_PER_LEVEL * MAX_LEVELS)), hpBarHeight); // 最終ボスの最大HPは全レベルの合計HP
-                    ctx.strokeStyle = '#0f0'; ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+                     ctx.fillStyle = 'red'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
+                     // 最終ボスの最大HPは固定値 FINAL_BOSS_HP を使用
+                     ctx.fillStyle = 'lime'; ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (finalBoss.hp / FINAL_BOSS_HP), hpBarHeight);
+                     ctx.strokeStyle = '#0f0'; ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
 
                  } else {
                      // 画像がない場合の代替描画
@@ -1197,7 +1427,7 @@
                      ctx.fillRect(finalBoss.x, finalBoss.y, finalBoss.width, finalBoss.height);
                  }
              }
-            // ★★★ FINAL_BOSS 状態の描画処理、ここまで！★★★
+
 
             // Draw projectiles (自機の弾)
             projectiles.forEach(p => {
@@ -1207,310 +1437,402 @@
 
             // Draw invader projectiles (敵弾 - 通常敵とボス、最終ボス含む)
             invaderProjectiles.forEach(p => {
-                ctx.fillStyle = 'red'; // 敵弾の色
-                ctx.fillRect(p.x, p.y, p.width, p.height);
+                 // ホーミングミサイルの場合は円を描画
+                 if (p.isHoming) {
+                     ctx.fillStyle = HOMING_MISSILE_COLOR;
+                     ctx.beginPath();
+                     ctx.arc(p.x + p.radius, p.y + p.radius, p.radius, 0, Math.PI * 2);
+                     ctx.fill();
+                 } else {
+                    ctx.fillStyle = 'red'; // 通常の敵弾の色
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                 }
             });
         }
 
-
         // --- Collision Detection ---
-        // ... (checkCollisions 関数全体は変更ありません - 前回貼り付けたものと同じ) ...
 
         function checkCollisions() {
             // Player projectiles hitting invaders (PLAYING状態のみ)
             if (currentGameState === GAME_STATE.PLAYING) {
-                projectiles.forEach((p, pIndex) => {
-                    const hitInvaders = [];
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const projectile = projectiles[i];
+                    for (let j = invaders.length - 1; j >= 0; j--) {
+                        const invader = invaders[j];
 
-                    invaders.forEach((invader) => {
-                        if (isColliding(p, invader)) {
-                            hitInvaders.push(invader);
+                        if (isColliding(projectile, invader)) {
+                            projectiles.splice(i, 1); // Remove projectile
+                            invaders.splice(j, 1); // Remove invader
+                            score += 10;
+                            updateScoreDisplay();
+                            // if (loadedAudio.invaderHit) loadedAudio.invaderHit.play();
+
+                            break; // 1つの弾丸は1体のインベーダーにしか当たらない
                         }
-                    });
-
-                    if (hitInvaders.length > 0) {
-                        projectiles.splice(pIndex, 1); // Remove projectile
-
-                        hitInvaders.forEach(hitInvader => {
-                            const invaderIndex = invaders.indexOf(hitInvader);
-                            if (invaderIndex !== -1) {
-                                invaders.splice(invaderIndex, 1); // Remove invader
-                                score += 100;
-                                updateScoreDisplay();
-                                // if (loadedAudio.invaderHit) { loadedAudio.invaderHit.play(); }
-                            }
-                        });
-                        return; // projectiles.forEach から抜ける
                     }
-                });
+                }
             }
 
             // Player projectiles hitting boss (PLAYING状態での通常ボスのみ)
             if (currentGameState === GAME_STATE.PLAYING && boss && !boss.isExploding) { // ボスが爆発中でなければ判定
-                projectiles.forEach((p, pIndex) => {
-                    if (isColliding(p, boss)) {
-                        projectiles.splice(pIndex, 1); // Remove projectile
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const projectile = projectiles[i];
+                    if (isColliding(projectile, boss)) {
+                        projectiles.splice(i, 1); // Remove projectile
                         boss.hp--;
+                        score += 50; // ボス被弾でスコア加算
+                        updateScoreDisplay();
                         // if (loadedAudio.bossHit) { loadedAudio.bossHit.play(); }
                         if (boss.hp <= 0) {
                             boss.isExploding = true; // ボスを爆発状態にする
-                            boss.explosionTimer = 0;
+                            boss.explosionTimer = 0; // 爆発タイマーをリセット
+                             score += 500; // ボス撃破ボーナス (HP0になった時点で加算)
+                             updateScoreDisplay();
                             // if (loadedAudio.bossExplosion) { loadedAudio.bossExplosion.play(); }
                         }
-                        return; // ボスに当たったらその弾丸のチェックは終了
+                        break; // ボスに当たったらその弾丸のチェックは終了
                     }
-                });
+                }
             }
 
-             // ★★★ここからプレイヤーの弾丸が最終ボスに当たる衝突判定を追加！★★★
+             // ★追加★ プレイヤーの弾丸が最終ボスに当たる衝突判定 (FINAL_BOSS 状態かつ最終ボスがいるときのみ)
              if (currentGameState === GAME_STATE.FINAL_BOSS && finalBoss && !finalBoss.isExploding) {
-                  projectiles.forEach((p, pIndex) => {
-                      if (isColliding(p, finalBoss)) {
-                          projectiles.splice(pIndex, 1); // プレイヤーの弾丸を削除
-                          finalBoss.hp--; // 最終ボスのHPを減らす
-                           // 最終ボス被弾音があれば再生 (loadedAudio.finalBossHitなど)
-                           if (finalBoss.hp <= 0) {
-                               finalBoss.isExploding = true; // 最終ボスを爆発状態にする
-                               finalBoss.explosionTimer = 0;
-                               // 最終ボス爆発音があれば再生 (loadedAudio.finalBossExplosionなど)
-                               // 最終ボス撃破時の処理は update 関数で行います。
-                           }
-                          return; // プレイヤーの弾丸のチェックを終了
+                 for (let i = projectiles.length - 1; i >= 0; i--) {
+                     const projectile = projectiles[i];
+                     if (isColliding(projectile, finalBoss)) {
+                         projectiles.splice(i, 1); // プレイヤーの弾丸を削除
+                         finalBoss.hp--; // 最終ボスのHPを減らす
+                         score += 100; // 最終ボス被弾でスコア加算
+                         updateScoreDisplay();
+                            // 最終ボス被弾音があれば再生 (loadedAudio.finalBossHitなど)
+                             if (finalBoss.hp <= 0) {
+                                finalBoss.isExploding = true; // 最終ボスを爆発状態にする
+                                finalBoss.explosionTimer = 0; // 爆発タイマーをリセット
+                                 score += 5000; // 最終ボス撃破ボーナス (HP0になった時点で加算)
+                                 updateScoreDisplay();
+                                // 最終ボス爆発音があれば再生 (loadedAudio.finalBossExplosionなど)
+                             }
+                          break; // プレイヤーの弾丸のチェックを終了
                       }
-                  });
-             }
-             // ★★★プレイヤーの弾丸が最終ボスに当たる衝突判定の追加、ここまで！★★★
+                  }
+              }
 
 
             // Invader projectiles hitting player (PLAYING状態とFINAL_BOSS状態の両方でチェック)
-            invaderProjectiles.forEach((ip, ipIndex) => {
-                if (!player.invincible && isColliding(ip, player)) {
-                    invaderProjectiles.splice(ipIndex, 1); // Remove projectile (safe due to single target)
-                    lives--;
-                    updateLivesDisplay();
-                    player.invincible = true;
-                    player.invincibleTimer = 0;
-                    player.blinkTimer = 0;
-                    // if (loadedAudio.playerHit) { loadedAudio.playerHit.play(); }
-                    // ゲームオーバー判定
-                    if (lives <= 0 && currentGameState !== GAME_STATE.GAME_OVER) { // すでにゲームオーバー状態で重複して呼ばれないようにチェックを追加
-                         endGame(false); // ゲームオーバー
+            // プレイヤーが無敵でない場合、かつライフが0より大きい場合のみ判定
+            if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && player && !player.invincible && lives > 0) {
+                for (let i = invaderProjectiles.length - 1; i >= 0; i--) {
+                    const projectile = invaderProjectiles[i];
+
+                    // 衝突判定: オブジェクトに radius プロパティがあれば円として、なければ矩形として判定
+                    const isProjCircle = projectile.hasOwnProperty('radius') && projectile.radius > 0;
+
+                    if (isProjCircle) {
+                         // 円と矩形の衝突判定 (ホーミングミサイルなど)
+                         const circleX = projectile.x + projectile.radius;
+                         const circleY = projectile.y + projectile.radius;
+                         const circleRadius = projectile.radius;
+                         const rectX = player.x;
+                         const rectY = player.y;
+                         const rectWidth = player.width;
+                         const rectHeight = player.height;
+
+                         // 矩形に最も近い円上の点を clampedX, clampedY とする
+                         const clampedX = Math.max(rectX, Math.min(circleX, rectX + rectWidth));
+                         const clampedY = Math.max(rectY, Math.min(circleY, rectY + rectHeight));
+
+                         // 円の中心と最も近い点との距離を計算
+                         const distanceX = circleX - clampedX;
+                         const distanceY = circleY - clampedY;
+                         const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+                         // 距離の2乗が半径の2乗以下であれば衝突
+                         if (distanceSquared <= (circleRadius * circleRadius)) {
+                             // 衝突した弾丸を削除
+                            invaderProjectiles.splice(i, 1); // Remove projectile (safe due to single target)
+                             lives--;
+                             updateLivesDisplay();
+                             player.invincible = true;
+                             player.invincibleTimer = 120; // 2秒無敵
+                             player.blinkTimer = 0;
+
+                             // if (loadedAudio.playerHit) { loadedAudio.playerHit.play(); }
+
+                             // ゲームオーバー判定
+                             if (lives <= 0 && currentGameState !== GAME_STATE.GAME_OVER) { // すでにゲームオーバー状態で重複して呼ばれないようにチェックを追加
+                                 endGame(false); // ゲームオーバー
+                                 return; // ゲームオーバー処理へ移行するため、update ループを抜ける
+                             }
+                             // プレイヤーに当たったらその弾丸のチェックは終了
+                             break;
+                         }
+                    } else {
+                         // 矩形と矩形の衝突判定 (通常の敵弾など)
+                        if (isColliding(projectile, player)) {
+                             // 衝突した弾丸を削除
+                            invaderProjectiles.splice(i, 1); // Remove projectile (safe due to single target)
+                             lives--;
+                             updateLivesDisplay();
+                             player.invincible = true;
+                             player.invincibleTimer = 120; // 2秒無敵
+                             player.blinkTimer = 0;
+
+                             // if (loadedAudio.playerHit) { loadedAudio.playerHit.play(); }
+
+                             // ゲームオーバー判定
+                             if (lives <= 0 && currentGameState !== GAME_STATE.GAME_OVER) { // すでにゲームオーバー状態で重複して呼ばれないようにチェックを追加
+                                 endGame(false); // ゲームオーバー
+                                 return; // ゲームオーバー処理へ移行するため、update ループを抜ける
+                             }
+                             // プレイヤーに当たったらその弾丸のチェックは終了
+                             break;
+                         }
                     }
-                    // プレイヤーに当たったらその弾丸のチェックは終了
-                    // ※ forEach内でspliceするとインデックスがずれる可能性があるので注意。
-                    // シンプルなゲームなので大きな問題になりにくいですが、より頑丈にするなら別の方法が必要。
-                    // ここではシンプルさを優先し、処理を続けます。
                 }
-            });
+            }
+             // プレイヤーの無敵時間の更新 (衝突が発生し、endGame で return しなかった場合のみ)
+             if (player && player.invincibleTimer > 0) {
+                 player.invincibleTimer--;
+                 player.blinkTimer++; // 点滅タイマーを進める
+                 if (player.invincibleTimer <= 0) {
+                     player.invincible = false;
+                     player.blinkTimer = 0; // 点滅タイマーもリセット
+                 }
+             }
         }
 
+
+        // Helper function for rectangle collision
         function isColliding(rect1, rect2) {
             return rect1.x < rect2.x + rect2.width &&
-                rect1.x + rect1.width > rect2.x &&
-                rect1.y < rect2.y + rect2.height &&
-                rect1.y + rect1.height > rect2.y;
+                   rect1.x + rect1.width > rect2.x &&
+                   rect1.y < rect2.y + rect2.height &&
+                   rect1.y + rect1.height > rect2.y;
         }
 
 
         // --- Input Handling ---
 
-        // ★★★ handleKeyDown 関数全体を、以下の修正済みのコードブロックと丸ごと置き換えてください ★★★
-        function handleKeyDown(e) {
+        // handleKeyDown 関数
+        function handleKeyDown(event) {
             // ゲームプレイ中 (PLAYING) または最終ボス戦中 (FINAL_BOSS) のみキー操作を有効にする
-            // この関数の最初の状態チェックは、このままで大丈夫です。
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return; // ★FINAL_BOSS状態でもキー操作を有効にするように修正★
-
-            // ここに既存のキー操作 (矢印キーやスペースキー) の if / else if ブロックがあります
-            if (e.key === 'ArrowLeft' || e.key === 'a') {
-                player.movingLeft = true;
-            } else if (e.key === 'ArrowRight' || e.key === 'd') {
-                player.movingRight = true;
-            } else if (e.key === ' ' || e.key === 'w') {
-                // This is handled by touch/mouse for continuous shooting,
-                // but keep for keyboard single shots if desired.
-                // Or disable to force touch/mouse for shooting.
-                // For now, let's use isPointerDown for shooting logic.
-                // If you want keyboard shooting, re-enable the shootProjectile() call here.
-                // shootProjectile();
-            }
-            // ↑↑↑ この既存のキー操作のブロックはここで終わっています ↑↑↑
-
-            // ↓↓↓ ★★★ここから、前回追加したLキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
-            if (e.key === 'L' || e.key === 'l') { // Lキーが押されたかチェック
-                console.log("Level Skip to Final Boss Trigger!"); // Debug Log
-                // 現在のゲーム状態が、スキップを許可する状態かチェック
-                if (currentGameState !== GAME_STATE.LOADING && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
-                     console.log("Changing state to FINAL_BOSS"); // Debug Log
-                    currentLevel = 30; // デバッグ用にレベルを最終レベルに設定
-                    currentGameState = GAME_STATE.FINAL_BOSS; // ゲーム状態を最終ボス戦に設定
-
-                    // ここでインベーダーや通常ボス、敵弾をクリア (もし存在すれば)
-                    invaders = [];
-                    boss = null;
-                    invaderProjectiles = [];
-
-                    updateLevelDisplay(); // レベル表示を更新
-
-                    // ↓↓↓ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
-                     finalBoss = {
-                         x: GAME_WIDTH / 2 - BOSS_WIDTH / 2, // 中央に配置
-                         y: 30, // 上の方に配置
-                         width: BOSS_WIDTH * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
-                         height: BOSS_HEIGHT * 1.5, // 最終ボスは通常ボスより大きい (サイズは調整可能)
-                         dx: 0, // この時点では動かしません。更新ロジックで動かします。
-                         dy: 0, // この時点では動かしません。
-                         hp: BOSS_HP_PER_LEVEL * MAX_LEVELS, // 最終ボスのHPは高い (全レベル分のHP相当)
-                         shootTimer: 0, // 射撃タイマー
-                         shootInterval: Math.max(30, 60 - (MAX_LEVELS - 1) * 5), // 射撃間隔 (難易度調整可能)
-                         radialShootTimer: 0, // 放射状ミサイル用タイマー
-                         radialShootInterval: Math.max(60, 100 - (MAX_LEVELS - 1) * 8), // 放射状ミサイル間隔 (難易度調整可能)
-                         isExploding: false, // 爆発中フラグ
-                         explosionTimer: 0, // 爆発タイマー
-                         explosionDuration: 60, // 爆発時間 (フレーム単位)
-                         originalImage: 'finalBoss', // ★最終ボス画像キーを使用★
-                         explosionImage: 'boss_explosion' // 爆発用画像のキー
-                     };
-                    // ↑↑↑ ★★★ここが、最終ボスオブジェクトの生成コードです！★★★ ↓↓↓
-
-                    // ↓↓↓ ★★★ここから音楽停止ロジックを追加！★★★ ↓↓↓
-                     if (loadedAudio.backgroundMusic && loadedAudio.backgroundMusic.playing()) {
-                         loadedAudio.backgroundMusic.stop(); // 背景音楽を停止
-                         // 最終ボス戦用の音楽があればここで再生（今は停止のみ）
-                         // if (loadedAudio.finalBossMusic) { loadedAudio.finalBossMusic.play(); }
+            // メッセージ表示中やスタート画面ではキー入力を無視
+            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) {
+                 // スタート画面でスペースキーを押した場合の特別な処理（START GAMEボタンの代わり）
+                 if (currentGameState === GAME_STATE.START_SCREEN && event.key === ' ') {
+                     // 最初のタップがまだで、ボタンが有効な場合のみ
+                     if (!isInitialStartTapDone && startButton && !startButton.disabled) {
+                         startButton.click(); // START GAME ボタンをクリックしたことにする (1回目のタップ)
+                     } else if (isInitialStartTapDone && startButton && !startButton.disabled) {
+                          startButton.click(); // START GAME ボタンをクリックしたことにする (2回目のタップ)
                      }
-                    // ↑↑↑ ★★★音楽停止ロジック、ここまで！★★★
-
-                } else {
-                    console.log("Level Skip ignored: Game is not in a state where skip is allowed or already in FINAL_BOSS.");
-                }
-            }
-            // ↑↑↑ ★★★ここまでが、Lキーのコードブロック（最終ボスオブジェクト生成＋音楽停止を追加済）です！★★★ ↓↓↓
-
-        } // handleKeyDown 関数の最後の閉じ波括弧
-
-
-        function handleKeyUp(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            if (e.key === 'ArrowLeft' || e.key === 'a') {
-                player.movingLeft = false;
-            } else if (e.key === 'ArrowRight' || e.key === 'd') {
-                player.movingRight = false;
-            }
-        }
-
-        function handleTouchStart(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            e.preventDefault(); // Prevent default touch behaviors like scrolling/zooming
-
-            if (e.touches.length > 0) {
-                isPointerDown = true;
-            }
-        }
-
-        function handleTouchMove(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS || !isPointerDown) return;
-
-            e.preventDefault(); // デフォルトのスクロールやズームを防止
-
-            if (e.touches.length > 0) {
-                const touchX = e.touches[0].clientX; // スクリーン座標でのタッチX
-                const rect = canvas.getBoundingClientRect(); // Canvasの表示位置とサイズを取得
-
-                // Canvas表示領域基準でのタッチX座標
-                let targetXOnCanvas = touchX - rect.left;
-                // --- スマートフォン向け端処理ロジック ---
-                // 画面端から何ピクセル以内にタッチしたら吸着させるかの閾値（表示ピクセル基準）
-                const edgeThreshold = 30;
-
-                if (targetXOnCanvas < edgeThreshold) {
-                    playerTargetX = player.width / 2;
-                } else if (targetXOnCanvas > rect.width - edgeThreshold) {
-                     playerTargetX = GAME_WIDTH - player.width / 2;
-                } else {
-                    targetXOnCanvas = Math.max(0, Math.min(targetXOnCanvas, rect.width)); // Canvas表示領域内にクランプ
-                    const gameToDisplayRatio = rect.width / GAME_WIDTH;
-                    playerTargetX = targetXOnCanvas / gameToDisplayRatio;
-                }
-                // --- 端処理ロジック終了 ---
-
-                // 目標座標がゲーム領域内に収まるようにクランプ（念のため）
-                playerTargetX = Math.max(player.width / 2, Math.min(playerTargetX, GAME_WIDTH - player.width / 2));
-            }
-        }
-
-
-        function handleTouchEnd() {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            isPointerDown = false;
-            playerTargetX = null;
-        }
-
-        function handleMouseDown(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            isPointerDown = true;
-            const rect = canvas.getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
-             // Canvas表示領域内にクランプ
-             mouseX = Math.max(0, Math.min(mouseX, rect.width));
-             const gameToDisplayRatio = rect.width / GAME_WIDTH;
-            playerTargetX = mouseX / gameToDisplayRatio;
-        }
-
-        function handleMouseMove(e) {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS || !isPointerDown) return;
-
-            const rect = canvas.getBoundingClientRect();
-            let mouseX = e.clientX - rect.left;
-            // Canvas表示領域内にクランプ
-             mouseX = Math.max(0, Math.min(mouseX, rect.width));
-             const gameToDisplayRatio = rect.width / GAME_WIDTH;
-            playerTargetX = mouseX / gameToDisplayRatio;
-        }
-
-        function handleMouseUp() {
-             // ゲームプレイ中または最終ボス戦中のみ操作を有効にする
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            isPointerDown = false;
-            playerTargetX = null;
-        }
-
-        function shootProjectile() {
-            // ゲームプレイ中または最終ボス戦中のみ発射を許可する
-            if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) return;
-
-            // 自機が無敵状態でない、または無敵状態でも発射を許可する場合
-            // if (!player.invincible) { // 無敵中は撃てなくするならこのチェックを追加
-                 projectiles.push({
-                     x: player.x + player.width / 2 - 2.5,
-                     y: player.y,
-                     width: 5,
-                     height: 10,
-                     dx: 0, // 弾のdx, dyを追加（放射状などにも対応できるように）
-                     dy: -PLAYER_PROJECTILE_SPEED // 上向きなのでマイナス
-                 });
-                 playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
-                 if (loadedAudio.shoot) {
-                     loadedAudio.shoot.play();
                  }
-            // } // 無敵中は撃てなくするならこの閉じ括弧が必要
+                 return;
+            }
+
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    player.movingLeft = true;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    player.movingRight = true;
+                    break;
+                case ' ': // Spacebar
+                    // スペースキーによる発射はキーが押された瞬間のみ
+                    // タップ/マウス操作での連射とは分けて処理
+                    if (playerShootCooldown <= 0) {
+                        createPlayerProjectile();
+                        if (loadedAudio.shoot) {
+                            loadedAudio.shoot.play();
+                        }
+                        playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                    }
+                    break;
+                 // ★追加★ デバッグ用キー (Lキーで最終ボス戦へスキップ)
+                 case 'L':
+                 case 'l': // 小文字も対応
+                     if (currentGameState !== GAME_STATE.GAME_OVER && finalBoss === null) { // ゲームオーバー中でなく、かつ最終ボスがいない場合のみ有効
+                         console.log("Debug: Skipping to Final Boss Level");
+                         currentLevel = MAX_LEVELS; // レベルを最大に設定
+                         // 残っているゲームオブジェクトをクリア
+                         invaders = [];
+                         boss = null;
+                         projectiles = [];
+                         invaderProjectiles = [];
+                         finalBoss = null; // 念のためリセット
+                         // 最終ボス戦開始
+                         startFinalBossBattle();
+                     }
+                     break;
+                 // ★追加★ デバッグ用キー (Kキーでゲームオーバー)
+                 case 'K':
+                 case 'k': // 小文字も対応
+                      if (currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.START_SCREEN && currentGameState !== GAME_STATE.LOADING) { // ゲームオーバーや開始画面以外で有効
+                         console.log("Debug: Triggering Game Over");
+                         lives = 0; // ライフを0に
+                         endGame(false); // ゲームオーバー処理を呼び出す
+                      }
+                      break;
+                 // ★追加★ デバッグ用キー (Wキーで通常レベルクリア/次のレベルへ)
+                 case 'W':
+                 case 'w': // 小文字も対応
+                     // PLAYING状態かつゲームオーバー中でない、かつ最終ボス戦中でない場合のみ有効
+                     if (currentGameState === GAME_STATE.PLAYING && currentGameState !== GAME_STATE.GAME_OVER && currentGameState !== GAME_STATE.FINAL_BOSS) {
+                         console.log(`Debug: Skipping to Level ${currentLevel + 1}`);
+                         // 残っている敵を全て削除
+                         invaders = [];
+                         boss = null;
+                         projectiles = [];
+                         invaderProjectiles = [];
+                         // レベルクリア処理へ移行
+                         endGame(true);
+                     }
+                     break;
+            }
+             // イベントのデフォルト動作を抑制 (スクロールなど防止)
+             // デバッグキーも含む
+             if (['ArrowLeft', 'ArrowRight', ' ', 'a', 'd', 'L', 'l', 'K', 'k', 'W', 'w'].includes(event.key)) {
+                 event.preventDefault();
+             }
+        }
+
+        // handleKeyUp 関数
+        function handleKeyUp(event) {
+             if (currentGameState !== GAME_STATE.PLAYING && currentGameState !== GAME_STATE.FINAL_BOSS) {
+                 return;
+             }
+            switch (event.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    player.movingLeft = false;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    player.movingRight = false;
+                    break;
+            }
+        }
+
+        // handleTouchStart 関数
+        function handleTouchStart(event) {
+            // ゲームプレイ中または最終ボス戦中のみ操作を有効にする (メッセージボックスやスタートボタンが表示されていない場合)
+            if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && messageBox.style.display === 'none' && startButtonContainer.style.display === 'none') {
+                 isPointerDown = true;
+                 // 複数のタッチを考慮せず、最初のタッチのみ使用
+                 if (event.touches.length > 0) {
+                     const touchX = event.touches[0].clientX;
+                     const canvasRect = canvas.getBoundingClientRect();
+                      // 画面座標からCanvas内の座標に変換
+                     playerTargetX = (touchX - canvasRect.left) * (canvas.width / canvasRect.width);
+
+                      // タッチ開始時にも発射（長押し連射対応）
+                     if (playerShootCooldown <= 0) {
+                         createPlayerProjectile();
+                         if (loadedAudio.shoot) {
+                             loadedAudio.shoot.play();
+                         }
+                         playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                     }
+                 }
+                 event.preventDefault(); // デフォルトのブラウザ動作（スクロール、ズームなど）を抑制
+            } else if (currentGameState === GAME_STATE.START_SCREEN && startButtonContainer.style.display !== 'none') {
+                 // スタート画面でタッチがあった場合、ボタンのクリックイベントを優先
+                 // ここではpreventDefaultせず、ボタンのイベントリスナーに任せる
+            } else if (currentGameState === GAME_STATE.GAME_OVER && messageBox.style.display !== 'none') {
+                 // ゲームオーバー画面でタッチがあった場合、ボタンのクリックイベントを優先
+                 // ここではpreventDefaultせず、ボタンのイベントリスナーに任せる
+            } else if (currentGameState === GAME_STATE.LOADING) {
+                 // ロード中は何もせずpreventDefault
+                 event.preventDefault();
+            }
+        }
+
+        // handleTouchMove 関数
+        function handleTouchMove(event) {
+            // ゲームプレイ中または最終ボス戦中、かつタッチが有効な場合のみプレイヤー位置を更新
+            if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && isPointerDown && messageBox.style.display === 'none' && startButtonContainer.style.display === 'none') {
+                 if (event.touches.length > 0) {
+                     const touchX = event.touches[0].clientX;
+                     const canvasRect = canvas.getBoundingClientRect();
+                     // 画面座標からCanvas内の座標に変換
+                     playerTargetX = (touchX - canvasRect.left) * (canvas.width / canvasRect.width);
+                 }
+                event.preventDefault(); // デフォルトのブラウザ動作を抑制
+            } else if (currentGameState === GAME_STATE.START_SCREEN || currentGameState === GAME_STATE.GAME_OVER || currentGameState === GAME_STATE.LOADING) {
+                 // 他の画面状態ではタッチムーブも抑制
+                 event.preventDefault();
+            }
+        }
+
+        // handleTouchEnd 関数
+        function handleTouchEnd(event) {
+             // タッチ終了時にはプレイヤーの移動フラグをリセット
+             // isPointerDown はタッチ/マウス共通なのでここではfalseにしない。
+             // touchstart/mousedown で true になり、touchend/mouseup で false になる。
+             // ただし、単一タッチの場合は isPointerDown を false にしてタッチ操作終了を示す。
+             if (event.touches.length === 0) { // 全てのタッチが離れた場合
+                 isPointerDown = false;
+                 playerTargetX = null; // ターゲット位置もリセット
+             }
+            event.preventDefault(); // デフォルトのブラウザ動作を抑制
+        }
+
+        // handleMouseDown 関数 (PC向けマウス操作)
+        function handleMouseDown(event) {
+            // 左クリックのみ反応
+            if (event.button === 0) {
+                // ゲームプレイ中または最終ボス戦中のみ操作を有効にする (メッセージボックスやスタートボタンが表示されていない場合)
+                if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && messageBox.style.display === 'none' && startButtonContainer.style.display === 'none') {
+                     isPointerDown = true;
+                     const mouseX = event.clientX;
+                     const canvasRect = canvas.getBoundingClientRect();
+                     // 画面座標からCanvas内の座標に変換
+                     playerTargetX = (mouseX - canvasRect.left) * (canvas.width / canvasRect.width);
+
+                     // マウスプレス時にも発射（長押し連射対応）
+                     if (playerShootCooldown <= 0) {
+                         createPlayerProjectile();
+                         if (loadedAudio.shoot) {
+                             loadedAudio.shoot.play();
+                         }
+                         playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
+                     }
+                } else if (currentGameState === GAME_STATE.START_SCREEN && startButtonContainer.style.display !== 'none') {
+                     // スタート画面でクリックがあった場合、ボタンのクリックイベントを優先
+                } else if (currentGameState === GAME_STATE.GAME_OVER && messageBox.style.display !== 'none') {
+                     // ゲームオーバー画面でクリックがあった場合、ボタンのクリックイベントを優先
+                } else if (currentGameState === GAME_STATE.LOADING) {
+                     // ロード中は何もせず
+                }
+            }
+        }
+
+        // handleMouseMove 関数 (PC向けマウス操作)
+        function handleMouseMove(event) {
+            // ゲームプレイ中または最終ボス戦中、かつマウスが押されている場合のみプレイヤー位置を更新
+            if ((currentGameState === GAME_STATE.PLAYING || currentGameState === GAME_STATE.FINAL_BOSS) && isPointerDown && messageBox.style.display === 'none' && startButtonContainer.style.display === 'none') {
+                 const mouseX = event.clientX;
+                 const canvasRect = canvas.getBoundingClientRect();
+                 // 画面座標からCanvas内の座標に変換
+                 playerTargetX = (mouseX - canvasRect.left) * (canvas.width / canvasRect.width);
+            }
+        }
+
+        // handleMouseUp 関数 (PC向けマウス操作)
+        function handleMouseUp(event) {
+             // 左クリック終了時のみ反応
+             if (event.button === 0) {
+                isPointerDown = false;
+                playerTargetX = null; // ターゲット位置もリセット
+             }
         }
 
 
-        // Call init when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', init);
+        // --- ゲーム開始 ---
+        window.onload = init;
 
-        // ★★★ このscriptタグの中身全てを、お手元のscriptタグの中身全てと置き換えるのはここまでです ★★★
     </script>
 </body>
 </html>
