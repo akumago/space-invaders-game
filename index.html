@@ -793,11 +793,6 @@
                   }
              }
 
-draw();
-            animationFrameId = requestAnimationFrame(update);
-
-            lastInvaderMoveDownTime = performance.now();
-        }
 
         // ★修正★ endGame 関数全体を置き換え (レベルMAXクリアで最終ボスへ遷移)
         function endGame(win) {
