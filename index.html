@@ -725,14 +725,7 @@
                  loadedAudio.backgroundMusic.volume(Howler.volume()); // 音量を戻すなど
              }
 
-            // ゲームループを再開（endGameで止まっているため）
-            lastTimestamp = performance.now();
-            animationFrameId = requestAnimationFrame(update);
-
-            // UIの更新など必要に応じてここに追加
-            updateLevelDisplay(); // レベル表示はMAXレベルのまま（または最終ボス戦表示に切り替え）
-        }
-
+        
         function startGame(isNewGame) {
            console.log("startGame function started with isNewGame:", isNewGame); // ★この行を追加★
         if (animationFrameId) {
