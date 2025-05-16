@@ -379,6 +379,8 @@
         // --- Initialization ---
 
         function init() {
+            console.log("init function started"); // ★この行を追加★
+        initGameEssentials();
             initGameEssentials();
             showLoadingMessage(); // ロード開始時にローディングメッセージを表示
             loadAssets().then(() => {
@@ -732,7 +734,9 @@
         }
 
         function startGame(isNewGame) {
-            if (animationFrameId) {
+           console.log("startGame function started with isNewGame:", isNewGame); // ★この行を追加★
+        if (animationFrameId) {
+          
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
