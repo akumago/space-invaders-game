@@ -30,33 +30,9 @@
             position: relative; /* 子要素の絶対配置の基準 */
         }
 
-        /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */
-        #gameContainer {
-            position: relative; /* 子要素（canvas, video）の基準 */
-            width: 420px; /* GAME_WIDTHと同期 */
-            height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
-            overflow: hidden; /* はみ出たコンテンツを隠す */
-            border: 2px solid #0f0; /* ゲーム画面の枠線 */
-            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
-            z-index: 1; /* 他のUIより手前 */
-            margin: auto; /* 画面中央に配置 */
-            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */
-        }
+                /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */        #gameContainer {            position: relative; /* 子要素（canvas, video）の基準 */            width: min(420px, 95vw); /* 最大幅を420pxに制限し、小さい画面では95vwに */            aspect-ratio: 9/19.5; /* アスペクト比を固定 */            overflow: hidden; /* はみ出たコンテンツを隠す */            border: 2px solid #0f0; /* ゲーム画面の枠線 */            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);            z-index: 1; /* 他のUIより手前 */            margin: auto; /* 画面中央に配置 */            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */        }
 
-        /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */
-        @media (max-width: 768px) {
-            #gameContainer {
-                width: min(100vw, calc(100vh * (9 / 19.5)));
-                height: min(calc(100vw * (19.5 / 9)), 100vh);
-                /* safe-area-inset は必要に応じて追加してください。
-                   現状のコードにはないので今回は含めません。
-                padding-top: env(safe-area-inset-top);
-                padding-bottom: env(safe-area-inset-bottom);
-                padding-left: env(safe-area-inset-left);
-                padding-right: env(safe-area-inset-right);
-                */
-            }
-        }
+                /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */        @media (max-width: 768px) {            #gameContainer {                width: 95vw; /* 画面幅の95%に */                margin: 10px auto; /* 上下に余白を追加 */            }        }        /* 4K以上の高解像度ディスプレイ用 */        @media (min-width: 2560px) {            #gameContainer {                width: min(840px, 30vw); /* 4K環境では最大840pxまで許容 */            }        }
 
         /* ゲームキャンバス */
         #gameCanvas {
@@ -86,7 +62,7 @@
         /* スコア、ライフ、レベル表示 */
         #score, #lives, #level {
             position: absolute;
-            font-size: 1.2em;
+            font-size: clamp(0.8em, 2vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
@@ -107,7 +83,7 @@
             transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.8);
             border: 2px solid #0f0;
-            padding: 20px;
+            padding: clamp(15px, 3vw, 20px); /* ★修正: レスポンシブなパディング */
             text-align: center;
             z-index: 3;
             display: none;
@@ -118,7 +94,7 @@
         }
         #messageBox p {
             margin: 0 0 20px 0;
-            font-size: 1.2em; /* フォントサイズを少し小さく */
+            font-size: clamp(0.9em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
@@ -129,11 +105,11 @@
             background-color: #0f0;
             color: #000;
             border: none;
-            padding: 10px 20px;
-            font-size: 1em; /* フォントサイズを調整 */
+            padding: clamp(8px, 2vw, 15px) clamp(15px, 3vw, 30px); /* ★修正: レスポンシブなパディング */
+            font-size: clamp(0.8em, 2vw, 1em); /* ★修正: レスポンシブなフォントサイズ */
             font-weight: bold;
             cursor: pointer;
-            border-radius: 5px;
+            border-radius: 8px;
             transition: background-color 0.3s, color 0.3s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
             max-width: 100%; /* ボタンが親要素を超えないように */
@@ -157,7 +133,7 @@
             justify-content: center;
             background-color: rgba(0, 0, 0, 0.7);
             border: 2px solid #0f0;
-            padding: 30px 40px;
+            padding: clamp(20px, 4vw, 30px); /* ★修正: レスポンシブなパディング */
             border-radius: 15px;
             box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
             z-index: 2;
@@ -165,7 +141,7 @@
             box-sizing: border-box;
         }
         #startButtonContainer h1 {
-            font-size: 2em; /* 修正：フォントサイズを調整 */
+            font-size: clamp(1.5em, 4vw, 2em); /* ★修正: レスポンシブなフォントサイズ */
             color: #0f0;
             text-shadow: 0 0 10px #0f0;
             margin-bottom: 10px;
@@ -173,7 +149,7 @@
             word-break: break-word; /* 追加：長い文字列を折り返す */
         }
         #startButtonContainer p {
-            font-size: 1.2em;
+            font-size: clamp(1em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
             color: #fff;
             margin-bottom: 30px;
             text-align: center;
@@ -183,8 +159,8 @@
             background-color: #0f0;
             color: #000;
             border: none;
-            padding: 15px 30px;
-            font-size: 1.2em;
+            padding: clamp(10px, 2.5vw, 15px) clamp(20px, 4vw, 30px); /* ★修正: レスポンシブなパディング */
+            font-size: clamp(1em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
             font-weight: bold;
             cursor: pointer;
             border-radius: 8px;
@@ -198,15 +174,15 @@
 
         /* 音量スライダー */
         .volume-control {
-            margin-top: 20px;
+            margin-top: clamp(15px, 3vw, 20px); /* ★修正: レスポンシブなマージン */
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: 1em;
+            font-size: clamp(0.8em, 2vw, 1em); /* ★修正: レスポンシブなフォントサイズ */
             color: #fff;
         }
         #volumeSlider {
-            width: 150px;
+            width: clamp(120px, 30vw, 150px); /* ★修正: レスポンシブな幅 */
             -webkit-appearance: none; /* デフォルトスタイルを無効化 */
             appearance: none;
             height: 8px;
@@ -233,6 +209,23 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
+        }
+
+        /* ローディングメッセージ */
+        #loadingMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: clamp(1.2em, 3vw, 1.8em); /* ★修正: レスポンシブなフォントサイズ */
+            font-weight: bold;
+            color: #0f0;
+            text-shadow: 0 0 8px #0f0;
+            z-index: 4;
+            display: none;
+            width: min(80%, 350px);
+            text-align: center;
+            word-break: break-word;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
@@ -661,6 +654,10 @@
 
         // ★追加: ラストボスの生成関数
         function createFinalBoss() {
+            // ラストボス生成前の状態チェックと設定
+            isFinalBoss = true;
+            bossCreatedForThisLevel = true;
+            
             boss = {
                 x: GAME_WIDTH / 2 - FINAL_BOSS_WIDTH / 2,
                 y: 30,
@@ -669,14 +666,13 @@
                 dx: FINAL_BOSS_SPEED,
                 hp: FINAL_BOSS_HP,
                 shootTimer: 0,
-                shootInterval: 45, // ラストボスは攻撃間隔が短い
+                shootInterval: 45,
                 isExploding: false,
                 explosionTimer: 0,
-                explosionDuration: 100, // ラストボスは爆発時間が長い
+                explosionDuration: 100,
                 originalImage: 'final_boss',
                 explosionImage: 'boss_explosion'
             };
-            isFinalBoss = true;
 
             // BGMを切り替える
             if (loadedAudio.backgroundMusic) {
@@ -1065,7 +1061,6 @@
                     createFinalBoss();
                 } else if (!bossCreatedForThisLevel && !isFinalBoss && !finalBossDefeated) {
                     // 通常のレベルでボスがまだ生成されていない場合
-                    // かつ、ラストボスモードでなく、ラストボスもまだ倒していない場合
                     createBoss();
                     bossCreatedForThisLevel = true;
                     if (loadedAudio.bossSpawn) {
@@ -1076,7 +1071,6 @@
                     endGame(true);
                 } else if (currentLevel < MAX_LEVELS && !finalBossDefeated) {
                     // 通常のボスを倒し、次のレベルがある場合
-                    // かつ、ラストボスをまだ倒していない場合
                     endGame(true);
                 }
             }
@@ -1447,27 +1441,4 @@
                 }
                 if (loadedAudio.bossBattleMusic) {
                     loadedAudio.bossBattleMusic.play();
-                    loadedAudio.bossBattleMusic.loop(true);
-                    loadedAudio.bossBattleMusic.volume(Howler.volume());
-                }
-            } else {
-                if (loadedAudio.bossBattleMusic) {
-                    loadedAudio.bossBattleMusic.stop();
-                }
-                if (loadedAudio.backgroundMusic) {
-                    loadedAudio.backgroundMusic.play();
-                    loadedAudio.backgroundMusic.loop(true);
-                    loadedAudio.backgroundMusic.volume(Howler.volume());
-                }
-            }
-
-            animationFrameId = requestAnimationFrame(update);
-            lastInvaderMoveDownTime = performance.now();
-        }
-
-        // Call init when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', init);
-
-    </script>
-</body>
-</html>
+                 
