@@ -30,9 +30,33 @@
             position: relative; /* 子要素の絶対配置の基準 */
         }
 
-                /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */        #gameContainer {            position: relative; /* 子要素（canvas, video）の基準 */            width: min(400px, 90vw); /* 最大幅を400pxに制限し、小さい画面では90vwに縮小 */            aspect-ratio: 9/19.5; /* アスペクト比を固定 */            overflow: hidden; /* はみ出たコンテンツを隠す */            border: 2px solid #0f0; /* ゲーム画面の枠線 */            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);            z-index: 1; /* 他のUIより手前 */            margin: 15px auto; /* 上下左右の余白を増やす */            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */        }
+        /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */
+        #gameContainer {
+            position: relative; /* 子要素（canvas, video）の基準 */
+            width: 420px; /* GAME_WIDTHと同期 */
+            height: calc(420px * (19.5 / 9)); /* GAME_HEIGHTと同期 */
+            overflow: hidden; /* はみ出たコンテンツを隠す */
+            border: 2px solid #0f0; /* ゲーム画面の枠線 */
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);
+            z-index: 1; /* 他のUIより手前 */
+            margin: auto; /* 画面中央に配置 */
+            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */
+        }
 
-                /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */        @media (max-width: 768px) {            #gameContainer {                width: 90vw; /* 画面幅の90%に縮小 */                margin: 20px auto; /* 上下の余白をさらに増やす */            }        }        /* 4K以上の高解像度ディスプレイ用 */        @media (min-width: 2560px) {            #gameContainer {                width: min(800px, 28vw); /* 4K環境でも少し小さめに表示 */                margin: 25px auto; /* 4K環境では余白をさらに増やす */            }        }
+        /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */
+        @media (max-width: 768px) {
+            #gameContainer {
+                width: min(100vw, calc(100vh * (9 / 19.5)));
+                height: min(calc(100vw * (19.5 / 9)), 100vh);
+                /* safe-area-inset は必要に応じて追加してください。
+                   現状のコードにはないので今回は含めません。
+                padding-top: env(safe-area-inset-top);
+                padding-bottom: env(safe-area-inset-bottom);
+                padding-left: env(safe-area-inset-left);
+                padding-right: env(safe-area-inset-right);
+                */
+            }
+        }
 
         /* ゲームキャンバス */
         #gameCanvas {
@@ -62,7 +86,7 @@
         /* スコア、ライフ、レベル表示 */
         #score, #lives, #level {
             position: absolute;
-            font-size: clamp(0.8em, 2vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
+            font-size: 1.2em;
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
@@ -83,38 +107,33 @@
             transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.8);
             border: 2px solid #0f0;
-            padding: clamp(15px, 3vw, 20px); /* ★修正: レスポンシブなパディング */
+            padding: 20px;
             text-align: center;
             z-index: 3;
             display: none;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-            width: min(80%, 350px); /* 幅を最大350pxまたは80%の小さい方に制限 */
+            max-width: 80%;
             box-sizing: border-box; /* パディングを含めて幅を計算 */
         }
         #messageBox p {
             margin: 0 0 20px 0;
-            font-size: clamp(0.9em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
+            font-size: 1.5em;
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
-            word-break: break-word; /* 長い文字列を適切に折り返す */
-            white-space: pre-wrap; /* 改行を保持しつつ折り返し */
         }
         #messageBox button {
             background-color: #0f0;
             color: #000;
             border: none;
-            padding: clamp(8px, 2vw, 15px) clamp(15px, 3vw, 30px); /* ★修正: レスポンシブなパディング */
-            font-size: clamp(0.8em, 2vw, 1em); /* ★修正: レスポンシブなフォントサイズ */
+            padding: 10px 20px;
+            font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
-            border-radius: 8px;
+            border-radius: 5px;
             transition: background-color 0.3s, color 0.3s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-            max-width: 100%; /* ボタンが親要素を超えないように */
-            overflow: hidden; /* はみ出た部分を隠す */
-            text-overflow: ellipsis; /* はみ出た部分を...で表示 */
         }
         #messageBox button:hover {
             background-color: #0a0;
@@ -133,56 +152,73 @@
             justify-content: center;
             background-color: rgba(0, 0, 0, 0.7);
             border: 2px solid #0f0;
-            padding: clamp(20px, 4vw, 30px); /* ★修正: レスポンシブなパディング */
+            padding: 30px 40px;
             border-radius: 15px;
             box-shadow: 0 0 25px rgba(0, 255, 0, 0.8);
-            z-index: 2;
-            width: min(80%, 350px); /* 修正：幅を制限 */
-            box-sizing: border-box;
+            z-index: 2; /* ゲーム画面より手前 */
+            width: 80%; /* 適度な幅に */
+            max-width: 400px; /* 最大幅 */
+            box-sizing: border-box; /* パディングを含めて幅を計算 */
         }
         #startButtonContainer h1 {
-            font-size: clamp(1.5em, 4vw, 2em); /* ★修正: レスポンシブなフォントサイズ */
+            font-size: 2.5em;
             color: #0f0;
             text-shadow: 0 0 10px #0f0;
             margin-bottom: 10px;
             text-align: center;
-            word-break: break-word; /* 追加：長い文字列を折り返す */
         }
         #startButtonContainer p {
-            font-size: clamp(1em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
+            font-size: 1.2em;
             color: #fff;
             margin-bottom: 30px;
             text-align: center;
-            word-break: break-word; /* 追加：長い文字列を折り返す */
         }
         #startButton {
             background-color: #0f0;
             color: #000;
             border: none;
-            padding: clamp(10px, 2.5vw, 15px) clamp(20px, 4vw, 30px); /* ★修正: レスポンシブなパディング */
-            font-size: clamp(1em, 2.5vw, 1.2em); /* ★修正: レスポンシブなフォントサイズ */
+            padding: 15px 30px;
+            font-size: 1.5em;
             font-weight: bold;
             cursor: pointer;
             border-radius: 8px;
             transition: background-color 0.3s, color 0.3s, transform 0.1s;
             box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
-            white-space: nowrap;
-            max-width: 100%; /* 追加：ボタンが親要素を超えないように */
-            overflow: hidden; /* 追加：はみ出た部分を隠す */
-            text-overflow: ellipsis; /* 追加：はみ出た部分を...で表示 */
+            white-space: nowrap; /* ボタン内のテキストが改行されないように */
+        }
+        #startButton:hover {
+            background-color: #0a0;
+            color: #fff;
+        }
+        #startButton:active {
+            transform: scale(0.98);
+        }
+
+        /* ローディングメッセージ */
+        #loadingMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #0f0;
+            text-shadow: 0 0 8px #0f0;
+            z-index: 4;
+            display: none;
         }
 
         /* 音量スライダー */
         .volume-control {
-            margin-top: clamp(15px, 3vw, 20px); /* ★修正: レスポンシブなマージン */
+            margin-top: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
-            font-size: clamp(0.8em, 2vw, 1em); /* ★修正: レスポンシブなフォントサイズ */
+            font-size: 1em;
             color: #fff;
         }
         #volumeSlider {
-            width: clamp(120px, 30vw, 150px); /* ★修正: レスポンシブな幅 */
+            width: 150px;
             -webkit-appearance: none; /* デフォルトスタイルを無効化 */
             appearance: none;
             height: 8px;
@@ -209,23 +245,6 @@
             border-radius: 50%;
             cursor: pointer;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.7);
-        }
-
-        /* ローディングメッセージ */
-        #loadingMessage {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: clamp(1.2em, 3vw, 1.8em); /* ★修正: レスポンシブなフォントサイズ */
-            font-weight: bold;
-            color: #0f0;
-            text-shadow: 0 0 8px #0f0;
-            z-index: 4;
-            display: none;
-            width: min(80%, 350px);
-            text-align: center;
-            word-break: break-word;
         }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.3/howler.min.js"></script>
@@ -286,9 +305,9 @@
         const MAX_LEVELS = 30; // ★難易度調整: 最大レベル数を30に設定
 
         // ★追加: ラストボス関連の定数
-        const FINAL_BOSS_WIDTH = 300; // ラストボスの幅を300に増加
-        const FINAL_BOSS_HEIGHT = 240; // ラストボスの高さも比例して増加
-        const FINAL_BOSS_HP = 50; // ラストボスのHPを50に増加
+        const FINAL_BOSS_WIDTH = 200; // ラストボスの幅
+        const FINAL_BOSS_HEIGHT = 160; // ラストボスの高さ
+        const FINAL_BOSS_HP = 30; // ラストボスのHP（30発で倒せる）
         const FINAL_BOSS_SPEED = 3; // ラストボスの移動速度
 
         const PLAYER_WIDTH = 40; // 修正: 30から40に増加（自機の表示サイズ）
@@ -358,7 +377,7 @@
             loadAssets().then(() => {
                 hideLoadingMessage();
                 currentGameState = GAME_STATE.START_SCREEN;
-                showStartButton();
+                showStartButton(); // これで「TAP TO START」が表示される
 
                 // 音量スライダーの初期値を設定し、イベントリスナーを追加
                 const savedVolume = parseFloat(localStorage.getItem('gameVolume')) || 0.5;
@@ -367,8 +386,8 @@
 
                 volumeSlider.addEventListener('input', (e) => {
                     const newVolume = parseFloat(e.target.value);
-                    Howler.volume(newVolume);
-                    localStorage.setItem('gameVolume', newVolume);
+                    Howler.volume(newVolume); // Howler.jsのグローバル音量を更新
+                    localStorage.setItem('gameVolume', newVolume); // 音量設定をローカルストレージに保存
 
                     if (backgroundVideo) {
                         backgroundVideo.volume = newVolume;
@@ -384,16 +403,18 @@
                 startButton.addEventListener('click', () => {
                     if (currentGameState === GAME_STATE.START_SCREEN) {
                         if (!isInitialStartTapDone) {
+                            // 1回目のタップ：動画再生とボタンテキスト変更
                             if (backgroundVideo) {
-                                backgroundVideo.muted = false;
-                                backgroundVideo.volume = Howler.volume();
+                                backgroundVideo.muted = false; // ミュート解除
+                                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
                                 backgroundVideo.play().catch(e => console.error("Video playback error on first tap:", e));
-                                backgroundVideo.style.display = 'block';
+                                backgroundVideo.style.display = 'block'; // 動画を表示
                             }
-                            startButton.innerText = "START GAME";
-                            isInitialStartTapDone = true;
+                            startButton.innerText = "START GAME"; // ボタンのテキストを変更
+                            isInitialStartTapDone = true; // フラグを立てる
                         } else {
-                            startGame(true);
+                            // 2回目のタップ：ゲーム開始
+                            startGame(true); // 新しいゲームを開始
                         }
                     }
                 });
@@ -580,13 +601,6 @@
         function showMessage(msg) {
             messageText.innerText = msg;
             messageBox.style.display = 'block';
-            
-            // メッセージの長さに応じてフォントサイズを調整
-            if (msg.length > 50) {
-                messageText.style.fontSize = '1em';
-            } else {
-                messageText.style.fontSize = '1.2em';
-            }
         }
 
         function hideMessageBox() {
@@ -654,10 +668,6 @@
 
         // ★追加: ラストボスの生成関数
         function createFinalBoss() {
-            // ラストボス生成前の状態チェックと設定
-            isFinalBoss = true;
-            bossCreatedForThisLevel = true;
-            
             boss = {
                 x: GAME_WIDTH / 2 - FINAL_BOSS_WIDTH / 2,
                 y: 30,
@@ -666,13 +676,14 @@
                 dx: FINAL_BOSS_SPEED,
                 hp: FINAL_BOSS_HP,
                 shootTimer: 0,
-                shootInterval: 45,
+                shootInterval: 45, // ラストボスは攻撃間隔が短い
                 isExploding: false,
                 explosionTimer: 0,
-                explosionDuration: 100,
+                explosionDuration: 100, // ラストボスは爆発時間が長い
                 originalImage: 'final_boss',
                 explosionImage: 'boss_explosion'
             };
+            isFinalBoss = true;
 
             // BGMを切り替える
             if (loadedAudio.backgroundMusic) {
@@ -768,7 +779,8 @@
 
             if (win) {
                 if (finalBossDefeated) {
-                    message = `完全クリア！\nスコア: ${score}`;
+                    // ラストボスを倒してゲームクリア
+                    message = `おめでとう！完全クリア！ 最終スコア: ${score}`;
                     playAgainButton.innerText = "もう一度プレイ";
                     playAgainButton.onclick = () => {
                         hideMessageBox();
@@ -784,23 +796,25 @@
                     }
                     canvas.style.display = 'none';
                 } else if (currentLevel >= MAX_LEVELS) {
-                    message = `レベル${currentLevel}\nラストボス出現！`;
-                    playAgainButton.innerText = "ボス戦へ";
+                    // 最終レベルクリアしてラストボス戦へ
+                    message = `レベル${currentLevel}クリア！ ラストボス戦開始！`;
+                    playAgainButton.innerText = "ラストボス戦へ";
                     playAgainButton.onclick = () => {
                         hideMessageBox();
                         startGame(false);
                     };
                 } else {
-                    message = `レベル${currentLevel}\nクリア！\nスコア: ${score}`;
+                    // 通常のレベルクリア
+                    message = `レベル${currentLevel}クリア！ スコア: ${score}`;
                     currentLevel++;
-                    playAgainButton.innerText = `次のレベル ${currentLevel}`;
+                    playAgainButton.innerText = `次のレベル (${currentLevel})`;
                     playAgainButton.onclick = () => {
                         hideMessageBox();
                         startGame(false);
                     };
                 }
             } else {
-                message = `ゲームオーバー\nスコア: ${score}`;
+                message = `ゲームオーバー！ スコア: ${score}`;
                 playAgainButton.innerText = "もう一度プレイ";
                 playAgainButton.onclick = () => {
                     hideMessageBox();
@@ -1056,10 +1070,12 @@
 
             // Check win/lose conditions
             if (invaders.length === 0 && !boss) {
-                if (currentLevel === MAX_LEVELS && !finalBossDefeated && !isFinalBoss) {
+                if (currentLevel === MAX_LEVELS && !finalBossDefeated) {
                     // 最終レベルクリア後、ラストボスがまだ倒されていない場合
-                    createFinalBoss();
-                } else if (!bossCreatedForThisLevel && !isFinalBoss && !finalBossDefeated) {
+                    if (!isFinalBoss) {
+                        createFinalBoss();
+                    }
+                } else if (!bossCreatedForThisLevel) {
                     // 通常のレベルでボスがまだ生成されていない場合
                     createBoss();
                     bossCreatedForThisLevel = true;
@@ -1069,7 +1085,7 @@
                 } else if (isFinalBoss && finalBossDefeated) {
                     // ラストボスを倒した場合、完全クリア
                     endGame(true);
-                } else if (currentLevel < MAX_LEVELS && !finalBossDefeated) {
+                } else if (currentLevel < MAX_LEVELS) {
                     // 通常のボスを倒し、次のレベルがある場合
                     endGame(true);
                 }
@@ -1384,60 +1400,16 @@
                  });
                  playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
                  if (loadedAudio.shoot) {
-                     loadedAudio.shoot.volume(0.1); // ★修正: ミサイル音の音量を10%に設定
+                     loadedAudio.shoot.volume(0.2); // ★追加: ミサイル音の音量を20%に設定
                      loadedAudio.shoot.play();
                  }
             // } // 無敵中は撃てなくするならこの閉じ括弧が必要
         }
 
-        // ★追加: ボステスト開始関数
-        function startBossTest(isFinalBossTest) {
-            if (animationFrameId) {
-                cancelAnimationFrame(animationFrameId);
-                animationFrameId = null;
-            }
 
-            // 基本的なゲーム状態の初期化
-            score = 0;
-            lives = 3;
-            currentLevel = isFinalBossTest ? MAX_LEVELS : 1;
-            isFinalBoss = isFinalBossTest;
-            finalBossDefeated = false;
-            
-            player.x = GAME_WIDTH / 2 - PLAYER_WIDTH / 2;
-            player.movingLeft = false;
-            player.movingRight = false;
-            player.invincible = false;
-            player.invincibleTimer = 0;
-            player.blinkTimer = 0;
+        // Call init when the DOM is fully loaded
+        document.addEventListener('DOMContentLoaded', init);
 
-            boss = null;
-            bossCreatedForThisLevel = false;
-            projectiles = [];
-            invaderProjectiles = [];
-            invaders = []; // インベーダーは生成しない
-
-            updateScoreDisplay();
-            updateLivesDisplay();
-            updateLevelDisplay();
-            hideMessageBox();
-            hideStartButton();
-
-            currentGameState = GAME_STATE.PLAYING;
-            lastTimestamp = performance.now();
-
-            // ボスを直接生成
-            if (isFinalBossTest) {
-                createFinalBoss();
-            } else {
-                createBoss();
-                bossCreatedForThisLevel = true;
-            }
-
-            // BGM制御
-            if (isFinalBossTest) {
-                if (loadedAudio.backgroundMusic) {
-                    loadedAudio.backgroundMusic.stop();
-                }
-                if (loadedAudio.bossBattleMusic) {
-   
+    </script>
+</body>
+</html>
