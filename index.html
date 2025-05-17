@@ -30,9 +30,9 @@
             position: relative; /* 子要素の絶対配置の基準 */
         }
 
-                /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */        #gameContainer {            position: relative; /* 子要素（canvas, video）の基準 */            width: min(420px, 95vw); /* 最大幅を420pxに制限し、小さい画面では95vwに */            aspect-ratio: 9/19.5; /* アスペクト比を固定 */            overflow: hidden; /* はみ出たコンテンツを隠す */            border: 2px solid #0f0; /* ゲーム画面の枠線 */            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);            z-index: 1; /* 他のUIより手前 */            margin: auto; /* 画面中央に配置 */            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */        }
+                /* ゲームコンテナ - キャンバスと動画、UI要素を内包 */        #gameContainer {            position: relative; /* 子要素（canvas, video）の基準 */            width: min(400px, 90vw); /* 最大幅を400pxに制限し、小さい画面では90vwに縮小 */            aspect-ratio: 9/19.5; /* アスペクト比を固定 */            overflow: hidden; /* はみ出たコンテンツを隠す */            border: 2px solid #0f0; /* ゲーム画面の枠線 */            box-shadow: 0 0 15px rgba(0, 255, 0, 0.8);            z-index: 1; /* 他のUIより手前 */            margin: 15px auto; /* 上下左右の余白を増やす */            box-sizing: border-box; /* パディングとボーダーを幅と高さに含める */        }
 
-                /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */        @media (max-width: 768px) {            #gameContainer {                width: 95vw; /* 画面幅の95%に */                margin: 10px auto; /* 上下に余白を追加 */            }        }        /* 4K以上の高解像度ディスプレイ用 */        @media (min-width: 2560px) {            #gameContainer {                width: min(840px, 30vw); /* 4K環境では最大840pxまで許容 */            }        }
+                /* スマートフォンなど、画面幅が768px以下のデバイスにのみ適用するスタイル */        @media (max-width: 768px) {            #gameContainer {                width: 90vw; /* 画面幅の90%に縮小 */                margin: 20px auto; /* 上下の余白をさらに増やす */            }        }        /* 4K以上の高解像度ディスプレイ用 */        @media (min-width: 2560px) {            #gameContainer {                width: min(800px, 28vw); /* 4K環境でも少し小さめに表示 */                margin: 25px auto; /* 4K環境では余白をさらに増やす */            }        }
 
         /* ゲームキャンバス */
         #gameCanvas {
@@ -1440,5 +1440,4 @@
                     loadedAudio.backgroundMusic.stop();
                 }
                 if (loadedAudio.bossBattleMusic) {
-                    loadedAudio.bossBattleMusic.play();
-                 
+   
