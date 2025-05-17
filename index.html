@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Improved Space Invaders</title>
+    <title>ミッチーベーダーズ</title>
     <style>
         /* 全体のリセットと基本設定 */
         html, body {
@@ -60,14 +60,38 @@
 
         /* ゲームキャンバス */
         #gameCanvas {
-            position: absolute; /* gameContainerを基準に配置 */
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            display: block; /* 初期状態はJSで制御 */
-            z-index: 0; /* 動画より手前 */
-            background-color: lightgray; /* ゲームプレイ中の背景色をライトグレーに設定 */
+            display: block;
+            z-index: 1;
+            background: transparent;
+        }
+
+        /* 背景キャンバス */
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            background: radial-gradient(ellipse at center, #1B2735 0%, #090A0F 100%);
+            background-image: 
+                radial-gradient(white, rgba(255,255,255,.2) 2px, transparent 40px),
+                radial-gradient(white, rgba(255,255,255,.15) 1px, transparent 30px),
+                radial-gradient(white, rgba(255,255,255,.1) 2px, transparent 40px),
+                radial-gradient(rgba(255,255,255,.4), rgba(255,255,255,.1) 2px, transparent 30px);
+            background-size: 550px 550px, 350px 350px, 250px 250px, 150px 150px;
+            background-position: 0 0, 40px 60px, 130px 270px, 70px 100px;
+        }
+
+        /* グローエフェクト用のクラス */
+        .glow-effect {
+            filter: drop-shadow(0 0 10px rgba(255, 255, 0, 0.7));
         }
 
         /* 背景動画 - gameContainerのサイズに合わせる */
@@ -107,14 +131,15 @@
             transform: translate(-50%, -50%);
             background-color: rgba(0, 0, 0, 0.8);
             border: 2px solid #0f0;
-            padding: 20px;
+            padding: 30px;
             text-align: center;
             z-index: 3;
             display: none;
             border-radius: 10px;
             box-shadow: 0 0 20px rgba(0, 255, 0, 0.8);
-            max-width: 80%;
-            box-sizing: border-box; /* パディングを含めて幅を計算 */
+            width: 80%;
+            max-width: 400px;
+            box-sizing: border-box;
         }
         #messageBox p {
             margin: 0 0 20px 0;
@@ -122,18 +147,22 @@
             font-weight: bold;
             color: #0f0;
             text-shadow: 0 0 5px #0f0;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            line-height: 1.4;
         }
         #messageBox button {
             background-color: #0f0;
             color: #000;
             border: none;
-            padding: 10px 20px;
+            padding: 15px 30px;
             font-size: 1.2em;
             font-weight: bold;
             cursor: pointer;
             border-radius: 5px;
             transition: background-color 0.3s, color 0.3s;
             box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            margin-top: 10px;
         }
         #messageBox button:hover {
             background-color: #0a0;
@@ -165,6 +194,13 @@
             color: #0f0;
             text-shadow: 0 0 10px #0f0;
             margin-bottom: 10px;
+            text-align: center;
+        }
+        #startButtonContainer .subtitle {
+            font-size: 1.8em;
+            color: #0f0;
+            text-shadow: 0 0 8px #0f0;
+            margin: 5px 0;
             text-align: center;
         }
         #startButtonContainer p {
@@ -253,6 +289,7 @@
     <div id="loadingMessage">Loading Game Assets...</div>
 
     <div id="gameContainer">
+        <canvas id="backgroundCanvas"></canvas>
         <canvas id="gameCanvas"></canvas>
         <video autoplay loop muted playsinline id="background-video">
             <source src="video/background_loop.mp4" type="video/mp4">
@@ -269,8 +306,8 @@
     </div>
 
     <div id="startButtonContainer">
-        <h1>SPACE INVADERS</h1>
-        <p>Improved</p>
+        <h1>MITCHY VADERS</h1>
+        <div class="subtitle">ミッチーベーダーズ</div>
         <button id="startButton">TAP TO START</button>
         <div class="volume-control">
             <span>Volume</span>
@@ -284,8 +321,9 @@
         const GAME_HEIGHT = GAME_WIDTH * (19.5 / 9); // Aspect ratio for mobile portrait
         const PLAYER_SPEED = 7;
         const PLAYER_PROJECTILE_SPEED = 10;
-        const INVADER_BASE_SPEED = 15; // 修正: 20から15に減少（インベーダーの初期移動速度）
-        const INVADER_MOVE_DOWN_AMOUNT = 20; // インベーダーが下に移動する量
+        const INVADER_BASE_SPEED = 2; // 修正: 基本速度を下げる
+        const INVADER_MAX_SPEED = 8; // 追加: 最大速度を設定
+        const INVADER_MOVE_DOWN_AMOUNT = 20;
 
         // ★難易度調整: 敵の弾速を少し上げる
         const ENEMY_PROJECTILE_SPEED = 5; // 変更: 4 -> 5
@@ -327,6 +365,7 @@
 
         // --- Global Variables ---
         let canvas, ctx;
+        let backgroundCanvas, bgCtx; // 背景用キャンバスのコンテキスト
         let player;
         let invaders = [];
         let projectiles = [];
@@ -370,10 +409,15 @@
 
         let isInitialStartTapDone = false; // 最初のタップ（動画再生）が完了したかどうかのフラグ
 
+        // Shooting stars
+        let shootingStars = []; // 流れ星の配列
+        let lastShootingStarTime = 0; // 最後に流れ星を生成した時間
+
         // --- Initialization ---
 
         function init() {
             initGameEssentials();
+            initBackgroundEffects(); // 背景エフェクトの初期化を追加
             loadAssets().then(() => {
                 hideLoadingMessage();
                 currentGameState = GAME_STATE.START_SCREEN;
@@ -637,8 +681,11 @@
                         y: startY + row * (INVADER_HEIGHT + INVADER_SPACING_Y),
                         width: INVADER_WIDTH,
                         height: INVADER_HEIGHT,
-                        // ★難易度調整: インベーダーのレベルごとの速度増加率を上げる
-                        dx: (INVADER_BASE_SPEED + (currentLevel - 1) * 7), // 変更: * 5 -> * 7
+                        // 速度計算を改善：基本速度から徐々に上昇し、最大速度で頭打ち
+                        dx: Math.min(
+                            INVADER_MAX_SPEED,
+                            INVADER_BASE_SPEED + (currentLevel - 1) * 0.2
+                        ),
                         hp: 1
                     });
                 }
@@ -1075,16 +1122,16 @@
                     if (!isFinalBoss) {
                         createFinalBoss();
                     }
-                } else if (!bossCreatedForThisLevel) {
-                    // 通常のレベルでボスがまだ生成されていない場合
+                } else if (isFinalBoss && finalBossDefeated) {
+                    // ラストボスを倒した場合、完全クリア
+                    endGame(true);
+                } else if (!bossCreatedForThisLevel && !isFinalBoss) {
+                    // 通常のレベルでボスがまだ生成されていない場合（ラストボス以外）
                     createBoss();
                     bossCreatedForThisLevel = true;
                     if (loadedAudio.bossSpawn) {
                         loadedAudio.bossSpawn.play();
                     }
-                } else if (isFinalBoss && finalBossDefeated) {
-                    // ラストボスを倒した場合、完全クリア
-                    endGame(true);
                 } else if (currentLevel < MAX_LEVELS) {
                     // 通常のボスを倒し、次のレベルがある場合
                     endGame(true);
@@ -1104,53 +1151,68 @@
         function draw() {
             ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
+            // グローエフェクトの設定
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = 'rgba(255, 255, 0, 0.7)';
+
             // Draw player
-            // 点滅効果のロジックを追加
-            if (player.invincible && player.blinkTimer % 10 < 5) { // 10フレーム周期で5フレーム表示、5フレーム非表示
+            if (player.invincible && player.blinkTimer % 10 < 5) {
                 // 非表示期間なので描画しない
             } else {
                 if (loadedImages.player) {
+                    // プレイヤーのグローエフェクト
+                    ctx.save();
+                    ctx.shadowBlur = 20;
+                    ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
                     ctx.drawImage(loadedImages.player, player.x, player.y, player.width, player.height);
+                    ctx.restore();
                 } else {
                     ctx.fillStyle = 'blue';
                     ctx.fillRect(player.x, player.y, player.width, player.height);
                 }
             }
 
-            // Draw invaders
+            // Draw invaders with glow
             invaders.forEach(invader => {
                 if (loadedImages.invader) {
+                    ctx.save();
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = 'rgba(255, 255, 0, 0.6)';
                     ctx.drawImage(loadedImages.invader, invader.x, invader.y, invader.width, invader.height);
+                    ctx.restore();
                 } else {
                     ctx.fillStyle = 'green';
                     ctx.fillRect(invader.x, invader.y, invader.width, invader.height);
                 }
             });
 
-            // Draw boss or boss explosion
+            // Draw boss with enhanced glow
             if (boss) {
                 if (boss.isExploding && loadedImages[boss.explosionImage]) {
-                    const frame = Math.floor(boss.explosionTimer / (boss.explosionDuration / 8)); // 8フレームアニメーションとして調整
-                    // 爆発アニメーション用のスプライトシートからフレームを切り出して描画
-                    // この例では、explosion.pngが横8フレームの画像であることを前提としています。
-                    // explosion.png のスプライトシートの各フレームのサイズを定義
-                    const spriteWidth = 256; // explosion.png の各フレームの幅
-                    const spriteHeight = 256; // explosion.png の各フレームの高さ
-
-                    // 描画位置とサイズをボスの中心に合わせる
+                    const frame = Math.floor(boss.explosionTimer / (boss.explosionDuration / 8));
+                    const spriteWidth = 256;
+                    const spriteHeight = 256;
                     const drawX = boss.x + boss.width / 2 - spriteWidth / 2;
                     const drawY = boss.y + boss.height / 2 - spriteHeight / 2;
                     const drawWidth = spriteWidth;
                     const drawHeight = spriteHeight;
 
+                    ctx.save();
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = 'rgba(255, 255, 0, 0.9)';
                     ctx.drawImage(
                         loadedImages[boss.explosionImage],
-                        frame * spriteWidth, 0, spriteWidth, spriteHeight, // スプライトシートから切り出す範囲
-                        drawX, drawY, drawWidth, drawHeight // キャンバスに描画する位置とサイズ
+                        frame * spriteWidth, 0, spriteWidth, spriteHeight,
+                        drawX, drawY, drawWidth, drawHeight
                     );
-
+                    ctx.restore();
                 } else if (loadedImages[boss.originalImage]) {
+                    ctx.save();
+                    ctx.shadowBlur = 25;
+                    ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
                     ctx.drawImage(loadedImages[boss.originalImage], boss.x, boss.y, boss.width, boss.height);
+                    ctx.restore();
+                    
                     // ボスのHPバーを描画
                     const hpBarWidth = boss.width * 0.8;
                     const hpBarHeight = 5;
@@ -1161,27 +1223,33 @@
                     ctx.fillRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
 
                     ctx.fillStyle = 'lime';
-                    ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (boss.hp / BOSS_HP_PER_LEVEL), hpBarHeight);
+                    const maxHp = isFinalBoss ? FINAL_BOSS_HP : BOSS_HP_PER_LEVEL;
+                    ctx.fillRect(hpBarX, hpBarY, hpBarWidth * (boss.hp / maxHp), hpBarHeight);
 
                     ctx.strokeStyle = '#0f0';
                     ctx.strokeRect(hpBarX, hpBarY, hpBarWidth, hpBarHeight);
-                } else {
-                    ctx.fillStyle = 'purple';
-                    ctx.fillRect(boss.x, boss.y, boss.width, boss.height);
                 }
             }
 
-            // Draw projectiles
+            // Draw projectiles with glow
+            ctx.save();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255, 255, 0, 0.6)';
             projectiles.forEach(p => {
                 ctx.fillStyle = 'yellow';
                 ctx.fillRect(p.x, p.y, p.width, p.height);
             });
+            ctx.restore();
 
-            // Draw invader projectiles
+            // Draw invader projectiles with red glow
+            ctx.save();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = 'rgba(255, 0, 0, 0.6)';
             invaderProjectiles.forEach(p => {
                 ctx.fillStyle = 'red';
                 ctx.fillRect(p.x, p.y, p.width, p.height);
             });
+            ctx.restore();
         }
 
         // --- Collision Detection ---
@@ -1400,12 +1468,77 @@
                  });
                  playerShootCooldown = PLAYER_SHOOT_COOLDOWN_MAX;
                  if (loadedAudio.shoot) {
-                     loadedAudio.shoot.volume(0.05); // ★追加: ミサイル音の音量を20%に設定
+                     loadedAudio.shoot.volume(0.2); // ★追加: ミサイル音の音量を20%に設定
                      loadedAudio.shoot.play();
                  }
             // } // 無敵中は撃てなくするならこの閉じ括弧が必要
         }
 
+        // 背景エフェクトの初期化
+        function initBackgroundEffects() {
+            backgroundCanvas = document.getElementById('backgroundCanvas');
+            bgCtx = backgroundCanvas.getContext('2d');
+            backgroundCanvas.width = GAME_WIDTH;
+            backgroundCanvas.height = GAME_HEIGHT;
+
+            // アニメーションを開始
+            requestAnimationFrame(updateBackground);
+        }
+
+        // 流れ星オブジェクトを生成
+        function createShootingStar() {
+            const speed = 5 + Math.random() * 5; // 速度をランダムに
+            return {
+                x: -50, // 画面外から開始
+                y: Math.random() * (GAME_HEIGHT / 2), // 画面上半分のランダムな位置
+                length: 50 + Math.random() * 50, // 流れ星の長さ
+                speed: speed,
+                opacity: 0.8,
+                dx: speed, // 右下に向かって移動
+                dy: speed * 0.7 // 斜めに落ちる角度を調整
+            };
+        }
+
+        // 背景アニメーションの更新
+        function updateBackground(timestamp) {
+            // 前回の流れ星生成から5-10秒経過したらランダムに新しい流れ星を生成
+            if (timestamp - lastShootingStarTime > (5000 + Math.random() * 5000)) {
+                shootingStars.push(createShootingStar());
+                lastShootingStarTime = timestamp;
+            }
+
+            // 背景をクリア
+            bgCtx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+            // 流れ星の更新と描画
+            shootingStars = shootingStars.filter(star => {
+                // 流れ星を移動
+                star.x += star.dx;
+                star.y += star.dy;
+
+                // グラデーションを作成
+                const gradient = bgCtx.createLinearGradient(
+                    star.x, star.y,
+                    star.x - star.length, star.y - star.length * 0.7
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${star.opacity})`);
+                gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+                // 流れ星を描画
+                bgCtx.beginPath();
+                bgCtx.strokeStyle = gradient;
+                bgCtx.lineWidth = 2;
+                bgCtx.moveTo(star.x, star.y);
+                bgCtx.lineTo(star.x - star.length, star.y - star.length * 0.7);
+                bgCtx.stroke();
+
+                // 画面外に出た流れ星を除去
+                return star.x < GAME_WIDTH + 100 && star.y < GAME_HEIGHT + 100;
+            });
+
+            // 次のフレームを要求
+            requestAnimationFrame(updateBackground);
+        }
 
         // Call init when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', init);
