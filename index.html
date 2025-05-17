@@ -409,33 +409,16 @@
 
                 // スタートボタンのクリックイベントリスナー
                 startButton.addEventListener('click', () => {
-                    if (currentGameState === GAME_STATE.START_SCREEN) {
-                        if (!isInitialStartTapDone) {
-                            // 1回目のタップ：動画再生とボタンテキスト変更
-                            if (backgroundVideo) {
-                                backgroundVideo.muted = false; // ミュート解除
-                                backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
-                                
-                                backgroundVideo.style.display = 'block'; // 動画を表示
-                                backgroundVideo.style.zIndex = -1; // キャンバスより奥に配置
-                            }
-                            startButton.innerText = "START GAME"; // ボタンのテキストを変更
-                            isInitialStartTapDone = true; // フラグを立てる
-                             // BGMを再生（Howler.jsで管理）
-                            if (loadedAudio.backgroundMusic) {
-                                if (!loadedAudio.backgroundMusic.playing()) {
-                                    loadedAudio.backgroundMusic.play();
-                                    loadedAudio.backgroundMusic.loop(true);
-                                     // 音量スライダーの値が反映されるようにここでvolumeを設定
-                                    loadedAudio.backgroundMusic.volume(Howler.volume());
-                                }
-                            }
-                        } else {
-                            // 2回目のタップ：ゲーム開始
-                            startGame(true); // 新しいゲームを開始
-                        }
-                    }
-                });
+    // スタートボタンがタップされたら、ゲームの状態がスタート画面なら、
+    // 「1回目のタップ」「2回目のタップ」の判定なく、直接ゲーム開始処理の準備関数を呼び出す
+    if (currentGameState === GAME_STATE.START_SCREEN) {
+        // ★修正：ユーザー操作をトリガーに動画とBGMを再生し、その後にゲーム開始に移行する処理を呼び出す
+        startGuidanceAndGame(); // 新しい関数を呼び出す
+    }
+});
+
+// ★注意★ 以前の「1回目のタップ」「2回目のタップ」判定ロジックと、
+// その中での動画・BGM再生、ボタンテキスト変更、フラグ操作のコードはここから削除されます。
             }).catch(error => {
                 console.error("Error loading assets:", error);
                 loadingMessage.innerText = `Error loading assets: ${error.message || error}. Please check console for details.`;
@@ -636,7 +619,61 @@
         function updateLevelDisplay() {
             levelDisplay.innerText = `Level: ${currentLevel}`;
         }
+// ★追加★ ユーザー操作をトリガーに動画/BGM再生を開始し、ゲーム開始に移行する関数
+function startGuidanceAndGame() {
+    console.log("startGuidanceAndGame function started");
 
+    // スタートボタンを非表示にする
+    hideStartButton(); // この関数は既存のはずです
+
+    // 背景動画を表示し、再生を開始する
+    if (backgroundVideo) { // backgroundVideo 変数は既存のはずです
+        backgroundVideo.style.display = 'block'; // 動画を表示
+        backgroundVideo.currentTime = 0; // 動画を最初から再生
+        backgroundVideo.muted = false; // 再生時のみミュートを解除（重要！）
+        backgroundVideo.volume = Howler.volume(); // スライダーの音量に合わせる
+
+        // 動画再生を開始し、成功したら動画終了イベントを設定、失敗時は代替処理へ
+        backgroundVideo.play().then(() => {
+            console.log("動画再生を開始しました。");
+
+            // 動画が終了したときのイベントリスナーを設定
+            backgroundVideo.onended = () => {
+                console.log("動画再生が終了しました。ゲームを開始します。");
+                backgroundVideo.onended = null; // イベントリスナーを削除して重複を防ぐ
+                startGame(true); // 動画終了後にゲーム開始 // startGame 関数は既存のはずです
+            };
+
+            // ★オプション：動画再生中に「スキップ」ボタンを表示することもできますが、
+            // まずは動画終了で開始するシンプルなので試しましょう。
+
+        }).catch(e => {
+            // 動画再生に失敗した場合の処理
+            console.error("動画再生に失敗しました:", e);
+            // 動画再生に失敗してもゲームを続行する（動画なしで開始する）ようにします。
+            console.log("動画再生に失敗しましたが、ゲームを開始します。");
+            if (backgroundVideo) {
+                 backgroundVideo.style.display = 'none'; // 動画を非表示に
+                 backgroundVideo.pause(); // 一時停止
+                 backgroundVideo.currentTime = 0; // リセット
+            }
+            startGame(true); // 動画再生に失敗してもゲーム開始 // startGame 関数は既存のはずです
+        });
+    } else {
+        // 背景動画要素自体がない場合の処理（念のため）
+        console.warn("背景動画要素が見つかりませんでした。動画なしでゲームを開始します。");
+        startGame(true); // startGame 関数は既存のはずです
+    }
+
+    // BGMを再生（Howler.jsで管理）。動画再生とほぼ同時に開始する。
+    if (loadedAudio.backgroundMusic) { // loadedAudio 変数は既存のはずです
+        if (!loadedAudio.backgroundMusic.playing()) {
+            loadedAudio.backgroundMusic.play();
+            loadedAudio.backgroundMusic.loop(true);
+            loadedAudio.backgroundMusic.volume(Howler.volume()); // Howler.volume() は既存のはずです
+        }
+    }
+}
         // --- Game State Management ---
 
         function createInvaders() {
