@@ -27,11 +27,15 @@ jobs:
 
       # Space Invadersのビルド (ルートURLにデプロイ)
       - name: Build Space Invaders (Root)
-        run: vite build --outDir dist --base /space-invaders-game/ space-invaders/index.html
+        run: npm run build
+        env:
+          GAME_TYPE: root
 
       # Mitchie Questのビルド (/mitchie-quest/ にデプロイ)
       - name: Build Mitchie Quest
-        run: vite build --outDir dist/mitchie-quest --base /space-invaders-game/mitchie-quest/ mitchie-quest/index.html
+        run: npm run build
+        env:
+          GAME_TYPE: mitchie-quest
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
