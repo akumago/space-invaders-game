@@ -25,17 +25,21 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Space Invadersのビルドに必要なアセットをコピー
+      - name: Copy Space Invaders Assets
+        run: cp -r assets/audio space-invaders/assets/
+
       # Space Invadersのビルド (ルートURLにデプロイ)
       - name: Build Space Invaders (Root)
-        run: npm run build
-        env:
-          GAME_TYPE: root
+        run: vite build --outDir dist --base /space-invaders-game/ space-invaders/index.html
+
+      # Mitchie Questのビルドに必要なアセットをコピー
+      - name: Copy Mitchie Quest Assets
+        run: cp -r assets/audio mitchie-quest/assets/
 
       # Mitchie Questのビルド (/mitchie-quest/ にデプロイ)
       - name: Build Mitchie Quest
-        run: npm run build
-        env:
-          GAME_TYPE: mitchie-quest
+        run: vite build --outDir dist/mitchie-quest --base /space-invaders-game/mitchie-quest/ mitchie-quest/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
