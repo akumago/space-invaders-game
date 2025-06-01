@@ -12,7 +12,7 @@ const creditsContent = (playerName: string) => [
   { type: 'credit', label: 'ミッチースライム（草原の支配者）', value: 'ミッチー（スライム形態）' },
   { type: 'credit', label: 'ミッチーセクシーナイト（森の騎士）', value: 'ミッチー（イケメン風）' },
   { type: 'credit', label: 'ミッチバロクサブロウ（洞窟の番人）', value: 'ミッチー（ワイルド系）' },
-  { type: 'credit', label: 'ミッチードラゴン（塔の守護者）', value: 'ミッチー（ドラゴン形態）' },
+  { type: 'credit', label: 'ミッチーりゅうおう（塔の守護者）', value: 'ミッチー（ドラゴン形態）' },
   { type: 'space' },
   { type: 'credit', label: 'カメラ', value: 'いつものSONY' },
   { type: 'credit', label: 'マイク', value: '安心のSHURE' },
