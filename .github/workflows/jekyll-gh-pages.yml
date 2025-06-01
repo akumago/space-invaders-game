@@ -33,13 +33,21 @@ jobs:
       - name: Build Space Invaders (Root)
         run: vite build --outDir dist --base /space-invaders-game/ space-invaders/index.html
 
+      # Space Invadersのビルド成果物にアセットをコピー
+      - name: Copy Space Invaders Assets to Output
+        run: cp -r assets/audio dist/assets/
+
       # Mitchie Questのビルドに必要なアセットをコピー
-      - name: Copy Mitchie Quest Assets
-        run: cp -r assets/audio mitchie-quest/assets/
+      # - name: Copy Mitchie Quest Assets
+      #   run: cp -r assets/audio mitchie-quest/assets/
 
       # Mitchie Questのビルド (/mitchie-quest/ にデプロイ)
       - name: Build Mitchie Quest
         run: vite build --outDir dist/mitchie-quest --base /space-invaders-game/mitchie-quest/ mitchie-quest/index.html
+
+      # Mitchie Questのビルド成果物にアセットをコピー
+      - name: Copy Mitchie Quest Assets to Output
+        run: cp -r assets/audio dist/mitchie-quest/assets/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
