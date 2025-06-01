@@ -4,18 +4,18 @@
 const BASE_URL = "https://akumago.github.io/space-invaders-game/music/";
 
 export const SFX_FILES = {
-  DAMAGE: `${BASE_URL}%E3%83%80%E3%83%A1%E3%83%BC%E3%82%B8%E3%82%92%E4%B8%8E%E3%81%88%E3%82%8B%E3%83%BB%E5%8F%97%E3%81%91%E3%82%8B_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%97%EF%BC%91%20(1).mp3`,
-  LEVEL_UP: `${BASE_URL}%E3%83%AC%E3%83%99%E3%83%AB%E3%82%A2%E3%83%83%E3%83%97_%E3%83%95%E3%82%A1%E3%83%B3%E3%83%95%E3%82%A1%E3%83%BC%E3%83%AC_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%AE%EF%BC%91.mp3`,
-  GAME_OVER: `${BASE_URL}%E5%85%A8%E6%BB%85_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%AE%EF%BC%92.mp3`,
-  VICTORY: `${BASE_URL}%E5%8B%9D%E5%88%A9_%E3%83%95%E3%82%A1%E3%83%B3%E3%83%95%E3%82%A1%E3%83%BC%E3%83%AC_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%AE%EF%BC%93.mp3`,
-  SPELL_CAST: `${BASE_URL}%E5%91%AA%E6%96%87%E3%82%92%E5%94%B1%E3%81%88%E3%82%8B_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%AE%EF%BC%9１.mp3`,
-  BOSS_APPEAR: `${BASE_URL}%E5%91%AA%E6%96%87%E3%82%92%E5%94%B1%E3%81%88%E3%82%8B_%E3%83%AC%E3%83%88%E3%83%AD_%E3%81%9D%E3%81%AE%EF%BC%9１.mp3`, // Using SPELL_CAST as placeholder
+  DAMAGE: `${BASE_URL}damage_retro_1.mp3`,
+  LEVEL_UP: `${BASE_URL}levelup_fanfare_retro_1.mp3`,
+  GAME_OVER: `${BASE_URL}gameover_retro_2.mp3`,
+  VICTORY: `${BASE_URL}victory_fanfare_retro_3.mp3`,
+  SPELL_CAST: `${BASE_URL}spellcast_retro_1.mp3`,
+  BOSS_APPEAR: `${BASE_URL}spellcast_retro_1.mp3`,
 };
 
 export const BGM_FILES = {
-  TITLE: "https://raw.githubusercontent.com/akumago/space-invaders-game/main/%E9%9F%B3%E6%A5%BD/%E5%A4%A7%E9%AD%94%E7%8E%8B%E3%83%9F%E3%83%83%E3%83%81%E3%83%BC%E3%81%AE%E6%82%B2%E5%8A%87.mp3",
-  BATTLE_NORMAL: "https://raw.githubusercontent.com/akumago/space-invaders-game/main/%E9%9F%B3%E6%A5%BD/%E6%88%A6%E9%97%98%E9%BC%93%E5%8B%95.mp3",
-  BATTLE_BOSS: `${BASE_URL}%E3%83%A9%E3%82%B9%E3%83%9C%E3%82%B9%E3%81%AE%E9%97%87.mp3`,
+  TITLE: `${BASE_URL}mitchy_tragedy.mp3`,
+  BATTLE_NORMAL: `${BASE_URL}battle_drumming.mp3`,
+  BATTLE_BOSS: `${BASE_URL}lastboss_darkness.mp3`,
 };
 
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Player, Enemy, Skill, Item, BattleState, GamePhase, CurrentRun, TargetType, SkillType } from '../types';
 import { PlayerStatusDisplay } from './PlayerStatusDisplay';
@@ -50,7 +49,8 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ currentRun, initialE
     log: [getInitialLogMessage()],
     selectedSkill: null,
     selectedItem: null,
-    showTargetSelection: false, 
+    showTargetSelection: false,
+    isSelectingMonsterToSwap: false,
   });
   
   const [selectedTargetIndex, setSelectedTargetIndex] = useState<number>(0);
@@ -340,6 +340,32 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ currentRun, initialE
   const consumableItems = useMemo(() => runPlayer.inventory.filter(item => item.type === "どうぐ"), [runPlayer.inventory]);
   const livingEnemiesCount = useMemo(() => battleState.enemies.filter(e => e.stats.currentHp > 0).length, [battleState.enemies]);
 
+  const handleMonsterSwap = (index: number) => {
+    if (!battleState.isSelectingMonsterToSwap) {
+      // 最初のモンスター選択
+      setBattleState(prev => ({
+        ...prev,
+        isSelectingMonsterToSwap: true,
+        log: [...prev.log, "いれかえるモンスターをえらんでください"]
+      }));
+      setSelectedTargetIndex(index);
+    } else {
+      // 2番目のモンスター選択（入れ替え実行）
+      const newEnemies = [...battleState.enemies];
+      const temp = newEnemies[selectedTargetIndex];
+      newEnemies[selectedTargetIndex] = newEnemies[index];
+      newEnemies[index] = temp;
+
+      setBattleState(prev => ({
+        ...prev,
+        enemies: newEnemies,
+        isSelectingMonsterToSwap: false,
+        log: [...prev.log, `${newEnemies[selectedTargetIndex].name} と ${newEnemies[index].name} をいれかえた！`]
+      }));
+      setSelectedTargetIndex(0);
+    }
+  };
+
   const renderEnemyAreaContent = () => {
     const mainDisplayedEnemy = battleState.enemies[selectedTargetIndex];
     const anyLivingEnemy = battleState.enemies.some(e => e.stats.currentHp > 0);
@@ -432,6 +458,79 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ currentRun, initialE
     innerDivBgClass = ''; 
   }
 
+  const renderEnemies = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {battleState.enemies.map((enemy, index) => (
+          <div
+            key={index}
+            className={`relative ${battleState.isSelectingMonsterToSwap ? 'cursor-pointer hover:opacity-80' : ''} ${selectedTargetIndex === index ? 'ring-2 ring-yellow-400' : ''}`}
+            onClick={() => battleState.isSelectingMonsterToSwap && handleMonsterSwap(index)}
+          >
+            <div className="dq-window p-4">
+              <img
+                src={enemy.spriteUrl}
+                alt={enemy.name}
+                className="w-32 h-32 object-contain mx-auto"
+              />
+              <div className="text-center mt-2">
+                <p className="text-shadow-dq">{enemy.name}</p>
+                <div className="w-full bg-gray-700 h-4 rounded-full mt-1">
+                  <div
+                    className="bg-red-500 h-4 rounded-full"
+                    style={{ width: `${(enemy.stats.currentHp / enemy.stats.maxHp) * 100}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-shadow-dq mt-1">
+                  HP: {enemy.stats.currentHp}/{enemy.stats.maxHp}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderBattleMenu = () => {
+    if (!battleState.playerTurn || battleState.showTargetSelection || battleState.isSelectingMonsterToSwap) return null;
+
+    return (
+      <div className="grid grid-cols-2 gap-4 mt-4">
+        <button
+          className="dq-button"
+          onClick={() => setShowSkillSelectionModal(true)}
+        >
+          とくぎ
+        </button>
+        <button
+          className="dq-button"
+          onClick={() => setShowItemSelectionModal(true)}
+        >
+          どうぐ
+        </button>
+        <button
+          className="dq-button"
+          onClick={() => {
+            setBattleState(prev => ({
+              ...prev,
+              isSelectingMonsterToSwap: true,
+              log: [...prev.log, "いれかえるモンスターをえらんでください"]
+            }));
+          }}
+        >
+          モンスターいれかえ
+        </button>
+        <button
+          className="dq-button"
+          onClick={onFleeBattle}
+        >
+          にげる
+        </button>
+      </div>
+    );
+  };
+
   return (
     <div 
         className="flex flex-col h-full w-full text-white items-stretch relative"
@@ -518,6 +617,9 @@ export const BattleScreen: React.FC<BattleScreenProps> = ({ currentRun, initialE
           )) : <p className="text-shadow-dq col-span-full text-center">つかえるどうぐがない。</p>}
         </div>
       </Modal>
+
+      {renderEnemies()}
+      {renderBattleMenu()}
     </div>
   );
 };
