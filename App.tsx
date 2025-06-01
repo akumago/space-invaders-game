@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GamePhase, Player, PlayerClass, SkillCardOption, StatBoost, Item, Equipment, Region, CurrentRun, Enemy, QuizQuestion, AppliedBuff, DebuffType, BuffType } from './types';
 import { TitleScreen } from './components/TitleScreen';
@@ -19,7 +18,7 @@ import { FinalBossPreDialogueScreen } from './components/FinalBossPreDialogueScr
 import { EndingMessageScreen } from './components/EndingMessageScreen'; 
 import { CreditsRollScreen } from './components/CreditsRollScreen'; 
 import { 
-    createInitialPlayer, saveGame, loadGame, deleteSave, 
+    createInitialPlayer, saveGame, loadGame, deleteSave, clearSaveData,
     checkLevelUp, calculateEffectiveStats, getEnemiesForEncounter, 
     generatePassword, createItemInstance, getDisplayItemName,
     collectWisdomFragment 
@@ -124,12 +123,49 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    const { player: loadedPlayer, regions: loadedRegions } = loadGame();
-    if (loadedPlayer) {
-      setPlayer(loadedPlayer);
-      setRegions(loadedRegions); 
-    } else {
-      setRegions(loadedRegions); 
+    const initializeAudio = async () => {
+      try {
+        if (await ensureAudioContext()) {
+          setIsSfxEnabled(true);
+          console.log('音声の初期化に成功しました。');
+        } else {
+          console.warn('音声の初期化に失敗しました。ユーザーインタラクションが必要です。');
+        }
+      } catch (error) {
+        console.error('音声の初期化中にエラーが発生しました:', error);
+      }
+    };
+
+    const handleUserInteraction = () => {
+      initializeAudio();
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+
+    document.addEventListener('click', handleUserInteraction);
+    document.addEventListener('keydown', handleUserInteraction);
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('keydown', handleUserInteraction);
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      const { player: loadedPlayer, regions: loadedRegions } = loadGame();
+      if (loadedPlayer) {
+        setPlayer(loadedPlayer);
+        setRegions(loadedRegions);
+        console.log('セーブデータを読み込みました。');
+      } else {
+        setRegions(loadedRegions);
+        console.log('新しいゲームを開始します。');
+      }
+    } catch (error) {
+      console.error('セーブデータの読み込みに失敗しました:', error);
+      clearSaveData();
+      setRegions(JSON.parse(JSON.stringify(REGIONS)));
     }
   }, []);
 
@@ -143,7 +179,12 @@ const App: React.FC = () => {
         gamePhase !== GamePhase.CREDITS_ROLL &&   
         currentRun === null 
     ) {
-      saveGame(player, regions);
+      try {
+        saveGame(player, regions);
+        console.log('ゲームの状態を保存しました。');
+      } catch (error) {
+        console.error('ゲームの状態の保存に失敗しました:', error);
+      }
     }
   }, [player, gamePhase, currentRun, regions]);
 
@@ -154,20 +195,33 @@ const App: React.FC = () => {
   }, [player, tryCollectWisdomFragment]);
 
   const startNewGameFlow = () => {
-    handleStopTitleMusic();
-    setPlayer(null); 
-    const initialRegionsFromConstants = JSON.parse(JSON.stringify(REGIONS));
-    setRegions(initialRegionsFromConstants); 
-    setGamePhase(GamePhase.NAME_INPUT);
+    try {
+      handleStopTitleMusic();
+      clearSaveData();
+      setPlayer(null); 
+      const initialRegionsFromConstants = JSON.parse(JSON.stringify(REGIONS));
+      setRegions(initialRegionsFromConstants); 
+      setGamePhase(GamePhase.NAME_INPUT);
+      console.log('新しいゲームを開始します。');
+    } catch (error) {
+      console.error('新しいゲームの開始に失敗しました:', error);
+      setModalMessage('新しいゲームの開始に失敗しました。ページを再読み込みしてください。');
+    }
   };
 
   const continueGameFlow = () => {
-    handleStopTitleMusic();
-    if (player) {
-      setGamePhase(GamePhase.WORLD_MAP);
-    } else {
-      setModalMessage("セーブデータがみつかりませんでした。はじめからスタートします。");
-      startNewGameFlow();
+    try {
+      handleStopTitleMusic();
+      if (player) {
+        setGamePhase(GamePhase.WORLD_MAP);
+        console.log('ゲームを続行します。');
+      } else {
+        setModalMessage("セーブデータがみつかりませんでした。はじめからスタートします。");
+        startNewGameFlow();
+      }
+    } catch (error) {
+      console.error('ゲームの続行に失敗しました:', error);
+      setModalMessage('ゲームの続行に失敗しました。ページを再読み込みしてください。');
     }
   };
 

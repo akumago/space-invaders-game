@@ -1,5 +1,3 @@
-
-
 import { Player, PlayerClass, GamePhase, StatBoost, Skill, Equipment, Item, CurrentRun, Region, Enemy, BuffType, DebuffType, AppliedDebuff, AppliedBuff } from '../types';
 import { 
     PLAYER_CLASSES, DEFAULT_PLAYER_NAME, XP_FOR_LEVEL, STAT_INCREASE_PER_LEVEL, 
@@ -191,13 +189,43 @@ const hydrateItem = (itemData: any): Item | null => {
   return hydrated;
 };
 
-const hydratePlayerEquipmentAndInventory = (player: Player): Player => {
-    const newPlayer = { ...player };
-    newPlayer.equipment.weapon = player.equipment.weapon ? hydrateItem(player.equipment.weapon) : null;
-    newPlayer.equipment.armor = player.equipment.armor ? hydrateItem(player.equipment.armor) : null;
-    newPlayer.equipment.shield = player.equipment.shield ? hydrateItem(player.equipment.shield) : null;
-    newPlayer.inventory = player.inventory.map(hydrateItem).filter(Boolean) as Item[];
-    return newPlayer;
+const hydratePlayerEquipmentAndInventory = (playerData: Partial<Player>): Player => {
+    // デフォルト値を持つ完全なPlayerオブジェクトを作成
+    const player: Player = {
+        name: playerData.name || DEFAULT_PLAYER_NAME,
+        playerClass: playerData.playerClass || PlayerClass.HERO,
+        level: Number(playerData.level) || 1,
+        experience: Number(playerData.experience) || 0,
+        gold: Number(playerData.gold) || 0,
+        baseStats: {
+            maxHp: Number(playerData.baseStats?.maxHp) || 20,
+            maxMp: Number(playerData.baseStats?.maxMp) || 10,
+            attack: Number(playerData.baseStats?.attack) || 5,
+            defense: Number(playerData.baseStats?.defense) || 5,
+            speed: Number(playerData.baseStats?.speed) || 5,
+            critRate: Number(playerData.baseStats?.critRate) || 0.05,
+        },
+        currentHp: Number(playerData.currentHp) || 20,
+        currentMp: Number(playerData.currentMp) || 10,
+        equipment: {
+            weapon: playerData.equipment?.weapon ? hydrateItem(playerData.equipment.weapon) : null,
+            armor: playerData.equipment?.armor ? hydrateItem(playerData.equipment.armor) : null,
+            shield: playerData.equipment?.shield ? hydrateItem(playerData.equipment.shield) : null,
+        },
+        inventory: (playerData.inventory || []).map(hydrateItem).filter(Boolean) as Item[],
+        persistentSkills: playerData.persistentSkills || [],
+        collectedWisdomIds: playerData.collectedWisdomIds || [],
+        temporarySkills: playerData.temporarySkills || [],
+        temporaryStatBoosts: playerData.temporaryStatBoosts || {},
+        activeBuffs: playerData.activeBuffs || [],
+        usedOncePerBattleSkills: playerData.usedOncePerBattleSkills || [],
+    };
+
+    // 現在のHPとMPを最大値に制限
+    player.currentHp = Math.min(player.currentHp, player.baseStats.maxHp);
+    player.currentMp = Math.min(player.currentMp, player.baseStats.maxMp);
+
+    return player;
 };
 
 
@@ -214,52 +242,78 @@ export const saveGame = (player: Player | null, unlockedRegions: Record<string, 
   }
 };
 
+export const clearSaveData = (): void => {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+    console.log('セーブデータをクリアしました。');
+  } catch (error) {
+    console.error('セーブデータのクリアに失敗しました:', error);
+  }
+};
+
 export const loadGame = (): { player: Player | null; regions: Record<string, Region> } => {
   try {
     const savedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (savedData) {
-      const parsedData = JSON.parse(savedData);
-      if (parsedData.player && parsedData.regions) {
-         let loadedPlayer = parsedData.player as Player;
-         loadedPlayer = hydratePlayerEquipmentAndInventory(loadedPlayer); 
+    if (!savedData) {
+      console.log('セーブデータが見つかりませんでした。新しいゲームを開始します。');
+      return { player: null, regions: JSON.parse(JSON.stringify(REGIONS)) };
+    }
 
-         loadedPlayer.baseStats = {
-            maxHp: Number(loadedPlayer.baseStats.maxHp) || 20,
-            maxMp: Number(loadedPlayer.baseStats.maxMp) || 10,
-            attack: Number(loadedPlayer.baseStats.attack) || 5,
-            defense: Number(loadedPlayer.baseStats.defense) || 5,
-            speed: Number(loadedPlayer.baseStats.speed) || 5,
-            critRate: Number(loadedPlayer.baseStats.critRate) || 0.05,
-         };
-         loadedPlayer.currentHp = Number(loadedPlayer.currentHp) || loadedPlayer.baseStats.maxHp;
-         loadedPlayer.currentMp = Number(loadedPlayer.currentMp) || loadedPlayer.baseStats.maxMp;
-         loadedPlayer.persistentSkills = loadedPlayer.persistentSkills || [];
-         loadedPlayer.temporarySkills = loadedPlayer.temporarySkills || [];
-         loadedPlayer.temporaryStatBoosts = loadedPlayer.temporaryStatBoosts || {};
-         loadedPlayer.activeBuffs = loadedPlayer.activeBuffs || []; // Ensure activeBuffs is initialized
-         loadedPlayer.collectedWisdomIds = loadedPlayer.collectedWisdomIds || []; 
-         loadedPlayer.usedOncePerBattleSkills = loadedPlayer.usedOncePerBattleSkills || [];
-         if (loadedPlayer.playerClass !== PlayerClass.HERO) {
-            console.warn(`旧バージョンの職業(${loadedPlayer.playerClass})を${PlayerClass.HERO}に変換しました。`);
-            loadedPlayer.playerClass = PlayerClass.HERO;
-         }
+    let parsedData;
+    try {
+      // pakoが利用可能な場合は解凍を試みる
+      if (typeof pako !== 'undefined') {
+        const decompressed = pako.inflate(atob(savedData), { to: 'string' });
+        parsedData = JSON.parse(decompressed);
+      } else {
+        parsedData = JSON.parse(savedData);
+      }
+    } catch (parseError) {
+      console.error('セーブデータの解析に失敗しました:', parseError);
+      clearSaveData();
+      return { player: null, regions: JSON.parse(JSON.stringify(REGIONS)) };
+    }
 
-        const loadedRegionsState = parsedData.regions as Record<string, {isUnlocked: boolean, isCleared: boolean}>;
-        const fullRegionsData = JSON.parse(JSON.stringify(REGIONS)); 
-        Object.keys(fullRegionsData).forEach(regionId => {
-          if(loadedRegionsState[regionId]) {
-            fullRegionsData[regionId].isUnlocked = loadedRegionsState[regionId].isUnlocked;
-            fullRegionsData[regionId].isCleared = loadedRegionsState[regionId].isCleared;
-          }
-        });
-        return { player: loadedPlayer, regions: fullRegionsData };
+    if (!parsedData || typeof parsedData !== 'object') {
+      console.error('無効なセーブデータ形式です。');
+      clearSaveData();
+      return { player: null, regions: JSON.parse(JSON.stringify(REGIONS)) };
+    }
+
+    const { player: savedPlayer, regions: savedRegions } = parsedData;
+    
+    // プレイヤーデータの検証と復元
+    let player: Player | null = null;
+    if (savedPlayer && typeof savedPlayer === 'object') {
+      try {
+        player = hydratePlayerEquipmentAndInventory(savedPlayer as Partial<Player>);
+      } catch (error) {
+        console.error('プレイヤーデータの復元に失敗しました:', error);
+        player = null;
       }
     }
+
+    // 地域データの検証と復元
+    let regions: Record<string, Region> = JSON.parse(JSON.stringify(REGIONS));
+    if (savedRegions && typeof savedRegions === 'object') {
+      try {
+        Object.entries(savedRegions).forEach(([key, value]) => {
+          if (REGIONS[key] && typeof value === 'object') {
+            regions[key] = { ...REGIONS[key], ...value };
+          }
+        });
+      } catch (error) {
+        console.error('地域データの復元に失敗しました:', error);
+        regions = JSON.parse(JSON.stringify(REGIONS));
+      }
+    }
+
+    return { player, regions };
   } catch (error) {
-    console.error("ロードに失敗しました:", error);
+    console.error('セーブデータの読み込みに失敗しました:', error);
+    clearSaveData();
+    return { player: null, regions: JSON.parse(JSON.stringify(REGIONS)) };
   }
-  const defaultRegionsFromConstants = JSON.parse(JSON.stringify(REGIONS));
-  return { player: null, regions: defaultRegionsFromConstants }; 
 };
 
 export const deleteSave = (): void => {
@@ -306,7 +360,7 @@ export const loadFromPassword = (password: string): { player: Player | null; reg
 
      if (parsedData.player && parsedData.regions) {
         let loadedPlayer = parsedData.player as Player;
-        loadedPlayer = hydratePlayerEquipmentAndInventory(loadedPlayer); 
+        loadedPlayer = hydratePlayerEquipmentAndInventory(loadedPlayer as Partial<Player>); 
 
          loadedPlayer.baseStats = {
             maxHp: Number(loadedPlayer.baseStats.maxHp) || 20,
@@ -347,7 +401,7 @@ export const loadFromPassword = (password: string): { player: Player | null; reg
         const parsedDataFallback = JSON.parse(decodedString);
         if (parsedDataFallback.player && parsedDataFallback.regions) {
            let loadedPlayer = parsedDataFallback.player as Player;
-           loadedPlayer = hydratePlayerEquipmentAndInventory(loadedPlayer); 
+           loadedPlayer = hydratePlayerEquipmentAndInventory(loadedPlayer as Partial<Player>); 
 
            loadedPlayer.baseStats = {
               maxHp: Number(loadedPlayer.baseStats.maxHp) || 20,
