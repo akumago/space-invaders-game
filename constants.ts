@@ -1,3 +1,5 @@
+
+
 import { PlayerClass, Skill, Item, Enemy, Region, StatBoost, SkillType, TargetType, SkillCardOption, WisdomFragment, QuizQuestion, DebuffType, BuffType } from './types';
 
 export const MAX_PLAYER_NAME_LENGTH = 4;
@@ -190,7 +192,7 @@ export const ALL_ENEMIES: Record<string, Enemy> = {
     skills: [ALL_SKILLS.s_power_strike, ALL_SKILLS.s_bash, ALL_SKILLS.s_fireball], aiBehavior: "こんごう", resistances: { ice: 'weak', dark: 'resist' }, activeDebuffs: []
   },
   e_senden_biker_boss: {
-    id: "e_senden_biker_boss", name: "ミッチーりゅうおう", spriteUrl: "https://imgur.com/XYDmxz4.jpeg",
+    id: "e_senden_biker_boss", name: "宣伝バイカー", spriteUrl: "https://i.imgur.com/bJWRTUg.jpeg",
     stats: { maxHp: Math.floor(300 * 1.35 * 1.25), currentHp: Math.floor(300 * 1.35 * 1.25), maxMp: 40, currentMp: 40, attack: Math.floor(30*1.3 * 1.2), defense: Math.floor(22 * 1.15), speed: 10, goldYield: 500, expYield: 250 },
     skills: [ALL_SKILLS.s_power_strike, ALL_SKILLS.s_cleave], aiBehavior: "こんごう", resistances: { ice: 'weak' }, activeDebuffs: []
   },

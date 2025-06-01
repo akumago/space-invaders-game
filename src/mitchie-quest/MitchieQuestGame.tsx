@@ -1,29 +1,27 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GamePhase, Player, PlayerClass, SkillCardOption, StatBoost, Item, Equipment, Region, CurrentRun, Enemy, QuizQuestion, AppliedBuff, DebuffType, BuffType } from './types';
-import { TitleScreen } from './components/TitleScreen';
-import { NameInputScreen } from './components/NameInputScreen';
-// import { ClassSelectionScreen } from './components/ClassSelectionScreen'; // Removed
-import { WorldMapScreen } from './components/WorldMapScreen';
-import { BattleScreen } from './components/BattleScreen';
-import { SkillCardSelectionScreen } from './components/SkillCardSelectionScreen';
-import { GameOverScreen } from './components/GameOverScreen';
-import { StatusScreen } from './components/StatusScreen';
-import { ShopScreen } from './components/ShopScreen';
-import { GachaScreen } from './components/GachaScreen';
-import { PasswordManagementScreen } from './components/PasswordManagementScreen';
-import { WisdomBagScreen } from './components/WisdomBagScreen'; 
-import { MitchyQuizScreen } from './components/MitchyQuizScreen'; // Added
-import { Modal } from './components/Modal';
-import { FinalBossPreDialogueScreen } from './components/FinalBossPreDialogueScreen'; 
-import { EndingMessageScreen } from './components/EndingMessageScreen'; 
-import { CreditsRollScreen } from './components/CreditsRollScreen'; 
+import { GamePhase, Player, PlayerClass, SkillCardOption, StatBoost, Item, Equipment, Region, CurrentRun, Enemy, QuizQuestion, AppliedBuff, DebuffType, BuffType } from '../types';
+import { TitleScreen } from '../components/TitleScreen';
+import { NameInputScreen } from '../components/NameInputScreen';
+import { WorldMapScreen } from '../components/WorldMapScreen';
+import { BattleScreen } from '../components/BattleScreen';
+import { SkillCardSelectionScreen } from '../components/SkillCardSelectionScreen';
+import { GameOverScreen } from '../components/GameOverScreen';
+import { StatusScreen } from '../components/StatusScreen';
+import { ShopScreen } from '../components/ShopScreen';
+import { GachaScreen } from '../components/GachaScreen';
+import { PasswordManagementScreen } from '../components/PasswordManagementScreen';
+import { WisdomBagScreen } from '../components/WisdomBagScreen'; 
+import { MitchyQuizScreen } from '../components/MitchieQuizScreen';
+import { Modal } from '../components/Modal';
+import { FinalBossPreDialogueScreen } from '../components/FinalBossPreDialogueScreen'; 
+import { EndingMessageScreen } from '../components/EndingMessageScreen'; 
+import { CreditsRollScreen } from '../components/CreditsRollScreen'; 
 import { 
     createInitialPlayer, saveGame, loadGame, deleteSave, 
     checkLevelUp, calculateEffectiveStats, getEnemiesForEncounter, 
     generatePassword, createItemInstance, getDisplayItemName,
     collectWisdomFragment 
-} from './services/gameService';
+} from '../services/gameService';
 import { 
     MAX_PLAYER_NAME_LENGTH, DEFAULT_PLAYER_NAME, REGIONS, ALL_ITEMS, XP_FOR_LEVEL, 
     PLAYER_CLASSES, STAT_INCREASE_PER_LEVEL, ALL_SKILLS, ALL_ENEMIES,
@@ -35,10 +33,9 @@ import {
     ALL_MITCHY_QUIZZES_SET1, ALL_MITCHY_QUIZZES_SET2, ALL_MITCHY_QUIZZES_SET3, 
     QUIZ_SET1_COMPLETION_FLAG_ID, QUIZ_SET2_COMPLETION_FLAG_ID, QUIZ_SET3_COMPLETION_FLAG_ID, 
     QUIZ_MIN_CORRECT_FOR_REWARD, QUIZ_SET_IDENTIFIERS 
-} from './constants';
-import { playSfx, SFX_FILES, ensureAudioContext, BGM_FILES, getMasterBgmVolume } from './services/audioService';
-import { updateActiveEffects } from './services/combatService';
-
+} from '../constants';
+import { playSfx, SFX_FILES, ensureAudioContext, BGM_FILES, getMasterBgmVolume } from '../services/audioService';
+import { updateActiveEffects } from '../services/combatService';
 
 interface CurrentQuizParams {
   questions: QuizQuestion[];
@@ -46,7 +43,7 @@ interface CurrentQuizParams {
   wisdomFragmentForRewardId: string;
 }
 
-const App: React.FC = () => {
+const MitchieQuestGame: React.FC = () => {
   const [gamePhase, setGamePhase] = useState<GamePhase>(GamePhase.TITLE);
   const [player, setPlayer] = useState<Player | null>(null); 
   const [regions, setRegions] = useState<Record<string, Region>>(() => JSON.parse(JSON.stringify(REGIONS))); 
@@ -67,18 +64,12 @@ const App: React.FC = () => {
   const currentBattleBgmUrlRef = useRef<string | null>(null);
   const endingBgmAudioRef = useRef<HTMLAudioElement | null>(null);
 
-
-  // Removed debug password states
-  // const [generatedDebugPassword, setGeneratedDebugPassword] = useState<string | null>(null);
-  // const [showDebugPasswordModal, setShowDebugPasswordModal] = useState(false);
   const [currentQuizParams, setCurrentQuizParams] = useState<CurrentQuizParams | null>(null);
-
 
   const checkForWisdomRewards = useCallback((currentPlayer: Player) => {
     WISDOM_COLLECTION_REWARDS.forEach(reward => {
       const currentCollectedIds = currentPlayer.collectedWisdomIds || [];
       const nonRewardFlagsCount = currentCollectedIds.filter(id => !id.startsWith("wisdom_reward_") && !id.startsWith("quiz_set") ).length;
-
 
       if (nonRewardFlagsCount >= reward.count) {
         const rewardFlagId = `wisdom_reward_${reward.count}_claimed`;
@@ -121,7 +112,6 @@ const App: React.FC = () => {
       return prevPlayer; 
     });
   }, [player, checkForWisdomRewards]);
-
 
   useEffect(() => {
     const { player: loadedPlayer, regions: loadedRegions } = loadGame();
@@ -209,7 +199,7 @@ const App: React.FC = () => {
       handleStopBattleMusic();
     }
     if (phase !== GamePhase.TITLE && 
-        (phase === GamePhase.NAME_INPUT || phase === GamePhase.WORLD_MAP || phase === GamePhase.BATTLE || phase === GamePhase.FINAL_BOSS_PRE_DIALOGUE || phase === GamePhase.ENDING_MESSAGE || phase === GamePhase.CREDITS_ROLL) ) { 
+        (phase === GamePhase.NAME_INPUT || phase === GamePhase.WORLD_MAP || phase === GamePhase.BATTLE || phase === GamePhase.FINAL_BOSS_PRE_DIALOGUE || phase === GamePhase.ENDING_MESSAGE || phase === GamePhase.CREDITS_ROLL) ) {
         handleStopTitleMusic();
     }
     if (phase !== GamePhase.CREDITS_ROLL) {
@@ -286,7 +276,7 @@ const App: React.FC = () => {
 
   const handlePlayTitleMusicRequest = useCallback(() => {
     if (!isTitleMusicPlaying) {
-      if (titleAudioRef.current) { 
+      if (titleAudioRef.current) {
         titleAudioRef.current.pause();
         titleAudioRef.current.src = ''; 
       }
@@ -301,11 +291,10 @@ const App: React.FC = () => {
         setIsTitleMusicPlaying(true); 
       });
     }
-    if (ensureAudioContext()) { 
+    if (ensureAudioContext()) {
         setIsSfxEnabled(true);
     }
   }, [isTitleMusicPlaying]);
-
 
   const initiateRegionRun = (regionId: string) => {
     if (!player) return;
@@ -332,8 +321,9 @@ const App: React.FC = () => {
   };
 
   const handleAttemptRegionSelect = (regionId: string) => {
+    if (!player) return;
     const selectedRegion = regions[regionId];
-    if (!selectedRegion || !player) return;
+    if (!selectedRegion || !selectedRegion.isUnlocked) return;
 
     // Check general region unlock level first
     if (selectedRegion.unlockPlayerLevel && player.level < selectedRegion.unlockPlayerLevel) {
@@ -357,7 +347,7 @@ const App: React.FC = () => {
           .filter(keyId => !possessedKeyItems.some(item => item.id === keyId))
           .map(keyId => ALL_ITEMS[keyId]?.name || "なぞの破片");
         
-        let message = "ミッチー大魔王の強大な気配は感じるが、まだ道は閉ざされているようだ…\n\n";
+        let message = "ミッチー大魔王の強大な気配は感じるが、まだ道は閉ざされているようだ...\n\n";
         if (possessedKeyNames.length > 0) {
           message += "あつめた破片:\n  " + possessedKeyNames.join("\n  ") + "\n\n";
         }
@@ -377,8 +367,8 @@ const App: React.FC = () => {
     if (isBossFirstRegion) {
       // If it's a boss-only region, check bossUnlockLevel now before confirmation
       if (selectedRegion.bossUnlockLevel && player.level < selectedRegion.bossUnlockLevel) {
-          setModalMessage(`この地域のボスに挑戦するにはレベル${selectedRegion.bossUnlockLevel}が必要です。`);
-          return;
+          setModalMessage(`この地域のボスに挑戦するにはレベル${selectedRegion.unlockPlayerLevel}が必要です。`);
+          return; 
       }
       setPendingRegionSelection(regionId);
       setShowBossConfirmationModal(true);
@@ -426,9 +416,9 @@ const App: React.FC = () => {
             if (fragmentItemBase) {
                 const fragmentItemInstance = createItemInstance(fragmentItemBase.id);
                 if (fragmentItemInstance){
-                    setPlayer(prevPlayer_1 => {
-                        if(!prevPlayer_1) return null;
-                        return { ...prevPlayer_1, inventory: [...prevPlayer_1.inventory, fragmentItemInstance] };
+                    setPlayer(prevPlayer => {
+                        if(!prevPlayer) return null;
+                        return { ...prevPlayer, inventory: [...prevPlayer.inventory, fragmentItemInstance] };
                     });
                     newKeyFragmentMessage = `「${fragmentItemInstance.name}」をてにいれた！`;
                 }
@@ -455,7 +445,7 @@ const App: React.FC = () => {
       if (win && runPlayerEndState.currentHp > 0) {
          const persistentEffectiveStats = calculateEffectiveStats(updatedPersistentPlayer);
          updatedPersistentPlayer.currentHp = Math.min(runPlayerEndState.currentHp, persistentEffectiveStats.maxHp);
-         updatedPersistentPlayer.currentMp = Math.min(runPlayerEndState.currentMp, persistentEffectiveStats.maxMp);
+         updatedPersistentPlayer.currentMp = Math.min(updatedPersistentPlayer.currentMp, persistentEffectiveStats.maxMp);
       }
       
       const { expiredEffectMessages } = updateActiveEffects(updatedPersistentPlayer);
@@ -475,7 +465,7 @@ const App: React.FC = () => {
       }
       
       if (defeatedBossId === ALL_ENEMIES.e_orc_boss.id) {
-        tryCollectWisdomFragment('wf_boss_orc_defeat', updatedPersistentPlayer);
+        tryCollectWisdomFragmentInternal(updatedPersistentPlayer, 'wf_boss_orc_defeat');
       }
       
       updatedPersistentPlayer = checkForWisdomRewards(updatedPersistentPlayer);
@@ -530,9 +520,9 @@ const App: React.FC = () => {
                 }
 
                 if (canUnlock) {
-                    setRegions(prevRegions_1 => ({
-                        ...prevRegions_1,
-                        [nextRegionIdToUnlock]: { ...prevRegions_1[nextRegionIdToUnlock], isUnlocked: true }
+                    setRegions(prevRegions => ({
+                        ...prevRegions,
+                        [nextRegionIdToUnlock]: { ...prevRegions[nextRegionIdToUnlock], isUnlocked: true }
                     }));
                     clearMessage += `\nあたらしいちいき: ${REGIONS[nextRegionIdToUnlock].name} がかいほうされた！`;
                 }
@@ -540,7 +530,7 @@ const App: React.FC = () => {
         }
         setModalMessage(prev => prev ? `${prev}\n\n${clearMessage}` : clearMessage);
         setCurrentRun(null); 
-        handleSetGamePhase(GamePhase.WORLD_MAP); 
+        handleSetGamePhase(GamePhase.WORLD_MAP);
       } else {
         // Check boss level before proceeding to skill card if next is boss
         if (nextEncounterIndex === currentRegion.encounters.length && currentRegion.bossId) {
@@ -560,8 +550,8 @@ const App: React.FC = () => {
         handleSetGamePhase(GamePhase.BATTLE_REWARD_SKILL_CARD); 
       }
     } else { 
-      if (player) { 
-            tryCollectWisdomFragment('wf_action_run_fail_first', player);
+      if (player) {
+            tryCollectWisdomFragmentInternal(player, 'wf_action_run_fail_first');
       }
       handleSetGamePhase(GamePhase.GAME_OVER); 
     }
@@ -595,20 +585,17 @@ const App: React.FC = () => {
   };
 
   const handleGameOverContinue = () => {
-    if (player) { 
-        const effectiveStats = calculateEffectiveStats(player);
-        setPlayer(p => p ? {...p, currentHp: effectiveStats.maxHp, currentMp: effectiveStats.maxMp, activeBuffs: [], usedOncePerBattleSkills: []} : null);
-    }
+    if (!player) return; // Added null check
+    const effectiveStats = calculateEffectiveStats(player);
+    setPlayer(p => p ? {...p, currentHp: effectiveStats.maxHp, currentMp: effectiveStats.maxMp, activeBuffs: [], usedOncePerBattleSkills: []} : null);
     setCurrentRun(null); 
     handleSetGamePhase(GamePhase.WORLD_MAP); 
   };
 
   const handleFleeBattle = () => {
-    if (currentRun) {
+    if (currentRun && player) { // Added player check
       setModalMessage(`${currentRun.player.name} はにげだした！`);
-       if (player) { 
-            tryCollectWisdomFragment('wf_action_run_fail_first', player);
-      }
+      tryCollectWisdomFragmentInternal(player, 'wf_action_run_fail_first');
       setCurrentRun(null);
       handleSetGamePhase(GamePhase.WORLD_MAP); 
     }
@@ -708,7 +695,7 @@ const App: React.FC = () => {
     });
   };
   
-  const handleSellItem = (itemToSell: Item, indexInInventory?: number) => { 
+  const handleSellItem = (itemToSell: Item, indexInInventory?: number) => {
     if (!player || !itemToSell.instanceId) return;
     const sellPrice = Math.floor(itemToSell.price * 0.5);
     setPlayer(prev => {
@@ -808,7 +795,6 @@ const App: React.FC = () => {
     });
   };
 
-
   const handlePasswordLoadSuccess = (loadedPlayer: Player, loadedRegions: Record<string, Region>) => {
     handleStopTitleMusic();
     setPlayer(loadedPlayer);
@@ -817,7 +803,7 @@ const App: React.FC = () => {
     handleSetGamePhase(GamePhase.WORLD_MAP);
   };
 
-  const handleAudioEnable = () => { 
+  const handleAudioEnable = () => {
     if (ensureAudioContext()) {
         setIsSfxEnabled(true);
     }
@@ -867,9 +853,6 @@ const App: React.FC = () => {
     handleSetGamePhase(GamePhase.TITLE);
   };
 
-  // Removed handleGenerateDebugHighLevelPassword function
-  // Removed handleCopyDebugPassword function
-
   const handleQuizComplete = (score: number, totalQuestions: number) => {
     if (!player || !currentQuizParams) return;
     
@@ -890,7 +873,7 @@ const App: React.FC = () => {
             message += "\n・ふくびきけん x1 を手に入れた！";
         }
         
-        tryCollectWisdomFragment(wisdomFragmentForRewardId); 
+        tryCollectWisdomFragmentInternal(player, wisdomFragmentForRewardId); 
         
         setPlayer(prevPlayer => {
             if (!prevPlayer) return null;
@@ -911,109 +894,108 @@ const App: React.FC = () => {
     handleSetGamePhase(GamePhase.WORLD_MAP);
   };
 
-
-  const renderScreen = () => {
-    switch (gamePhase) {
-      case GamePhase.TITLE:
-        return <TitleScreen 
-                  setGamePhase={handleSetGamePhase} 
-                  hasSaveData={!!player} 
-                  startNewGame={startNewGameFlow} 
-                  continueGame={continueGameFlow}
-                  onAudioStart={handleAudioEnable}
-                  onPlayTitleMusicRequest={handlePlayTitleMusicRequest}
-                  isTitleMusicPlaying={isTitleMusicPlaying}
-                  // onGenerateDebugHighLevelPassword prop removed
-                />;
-      case GamePhase.NAME_INPUT:
-        return <NameInputScreen setPlayerName={handleNameSet} setGamePhase={handleSetGamePhase} />;
-      case GamePhase.FINAL_BOSS_PRE_DIALOGUE: 
-        return <FinalBossPreDialogueScreen onDialogueComplete={handleFinalBossDialogueComplete} />;
-      case GamePhase.BOSS_CONFIRMATION: 
-      case GamePhase.WORLD_MAP:
-        if (!player) return <TitleScreen setGamePhase={handleSetGamePhase} hasSaveData={false} startNewGame={startNewGameFlow} continueGame={continueGameFlow} onAudioStart={handleAudioEnable} onPlayTitleMusicRequest={handlePlayTitleMusicRequest} isTitleMusicPlaying={isTitleMusicPlaying} />; 
-        return <WorldMapScreen regions={regions} onSelectRegion={handleAttemptRegionSelect} setGamePhase={handleSetGamePhase} player={player}/>;
-      case GamePhase.BATTLE:
-        if (!currentRun) {
-             setModalMessage("エラー: アクティブなランがありません。マップにもどります。");
-             handleSetGamePhase(GamePhase.WORLD_MAP);
-             return null;
-        }
-        const currentRegionForBattle = regions[currentRun.currentRegionId];
-         if (!currentRegionForBattle) {
-            setModalMessage("エラー: 現在の地域データが見つかりません。マップに戻ります。");
-            setCurrentRun(null);
-            handleSetGamePhase(GamePhase.WORLD_MAP);
-            return null;
-        }
-        const enemiesForBattle = getEnemiesForEncounter(currentRegionForBattle, currentRun.currentEncounterIndex);
-        if (enemiesForBattle.length === 0 && currentRun.currentEncounterIndex <= currentRegionForBattle.encounters.length) { 
-            if (currentRun.currentEncounterIndex !== currentRegionForBattle.encounters.length || !currentRegionForBattle.bossId) {
-              setModalMessage("エラー: このそうぐうでてきが見つかりませんでした。マップにもどります。");
-              setCurrentRun(null); 
-              handleSetGamePhase(GamePhase.WORLD_MAP);
-              return null;
-            }
-        }
-        const battleBgUrl = currentRegionForBattle?.battleBackgroundUrl;
-        return <BattleScreen 
-                  currentRun={currentRun} 
-                  initialEnemies={enemiesForBattle} 
-                  onBattleEnd={handleBattleEnd} 
-                  updateCurrentRunPlayer={updateCurrentRunPlayerState} 
-                  onFleeBattle={handleFleeBattle} 
-                  isSfxEnabled={isSfxEnabled}
-                  battleBgUrl={battleBgUrl} 
-                />;
-      case GamePhase.BATTLE_REWARD_SKILL_CARD:
-        return <SkillCardSelectionScreen onCardSelect={handleSkillCardSelect} />;
-      case GamePhase.GAME_OVER:
-        if (!currentRun) { 
-             setModalMessage("エラー: ゲームオーバー状態が無効です。タイトルに戻ります。");
-             handleSetGamePhase(GamePhase.TITLE);
-             return null;
-        }
-        return <GameOverScreen xpGained={currentRun.xpGainedThisRun} goldGained={currentRun.goldGainedThisRun} onContinue={handleGameOverContinue} />;
-      case GamePhase.ENDING_MESSAGE:
-        return <EndingMessageScreen onProceed={handleProceedToCredits} />;
-      case GamePhase.CREDITS_ROLL:
-        return <CreditsRollScreen playerName={player?.name || DEFAULT_PLAYER_NAME} onCreditsEnd={handleCreditsEnd} />;
-      case GamePhase.STATUS_SCREEN:
-        if (!player) return <p>プレイヤーデータがありません。</p>;
-        return <StatusScreen player={player} setGamePhase={handleSetGamePhase} onEquipItem={handleEquipItem} onUnequipItem={handleUnequipItem} onEnhanceEquipment={handleEnhanceEquipment}/>;
-      case GamePhase.SHOP:
-        if (!player) return <p>プレイヤーデータがありません。</p>;
-        return <ShopScreen player={player} currentShopRegionId={currentShopRegionId} allRegions={regions} onPurchaseItem={handlePurchaseItem} onSellItem={handleSellItem} setGamePhase={handleSetGamePhase} />;
-      case GamePhase.GACHA:
-        if (!player) return <p>プレイヤーデータがありません。</p>;
-        return <GachaScreen player={player} currentGachaRegionId={currentGachaRegionId} allRegions={regions} onUseGacha={handleUseGacha} setGamePhase={handleSetGamePhase} />;
-      case GamePhase.WISDOM_BAG: 
-        if (!player) return <p>プレイヤーデータがありません。</p>;
-        return <WisdomBagScreen player={player} setGamePhase={handleSetGamePhase} />;
-      case GamePhase.MITCHY_QUIZ:
-        if (!player || !currentQuizParams) {
-            setModalMessage("クイズの準備ができていません。");
-            handleSetGamePhase(GamePhase.WORLD_MAP);
-            return null;
-        }
-        return <MitchyQuizScreen 
-                  player={player} 
-                  questions={currentQuizParams.questions} 
-                  onQuizComplete={handleQuizComplete} 
-                  setGamePhase={handleSetGamePhase} 
-                />;
-      case GamePhase.PASSWORD_SAVE:
-        return <PasswordManagementScreen mode="save" playerData={player} regionsData={regions} setGamePhase={handleSetGamePhase} onLoadSuccess={handlePasswordLoadSuccess} />;
-      case GamePhase.PASSWORD_LOAD:
-        return <PasswordManagementScreen mode="load" playerData={player} regionsData={regions} setGamePhase={handleSetGamePhase} onLoadSuccess={handlePasswordLoadSuccess} />;
-      default:
-        return <p>ふめいなゲームフェーズです！</p>;
-    }
-  };
-
+  // Mitchie Quest Game Rendering (Existing Logic)
   return (
     <div className="w-full h-full flex flex-col items-stretch justify-stretch overflow-hidden">
-      {renderScreen()}
+      {
+        (() => {
+          switch (gamePhase) {
+            case GamePhase.TITLE:
+              return <TitleScreen 
+                        setGamePhase={handleSetGamePhase} 
+                        hasSaveData={!!player} 
+                        startNewGame={startNewGameFlow} 
+                        continueGame={continueGameFlow}
+                        onAudioStart={handleAudioEnable}
+                        onPlayTitleMusicRequest={handlePlayTitleMusicRequest}
+                        isTitleMusicPlaying={isTitleMusicPlaying}
+                      />;
+            case GamePhase.NAME_INPUT:
+              return <NameInputScreen setPlayerName={handleNameSet} setGamePhase={handleSetGamePhase} />;
+            case GamePhase.FINAL_BOSS_PRE_DIALOGUE: 
+              return <FinalBossPreDialogueScreen onDialogueComplete={handleFinalBossDialogueComplete} />;
+            case GamePhase.BOSS_CONFIRMATION: 
+            case GamePhase.WORLD_MAP:
+              if (!player) return <TitleScreen setGamePhase={handleSetGamePhase} hasSaveData={false} startNew game={startNewGameFlow} continueGame={continueGameFlow} onAudioStart={handleAudioEnable} onPlayTitleMusicRequest={handlePlayTitleMusicRequest} isTitleMusicPlaying={isTitleMusicPlaying} />; 
+              return <WorldMapScreen regions={regions} onSelectRegion={handleAttemptRegionSelect} setGamePhase={handleSetGamePhase} player={player}/>;
+            case GamePhase.BATTLE:
+              if (!currentRun) {
+                   setModalMessage("エラー: アクティブなランがありません。マップにもどります。");
+                   handleSetGamePhase(GamePhase.WORLD_MAP);
+                   return null;
+              }
+              const currentRegionForBattle = regions[currentRun.currentRegionId];
+               if (!currentRegionForBattle) {
+                  setModalMessage("エラー: 現在の地域データが見つかりません。マップに戻ります。");
+                  setCurrentRun(null);
+                  handleSetGamePhase(GamePhase.WORLD_MAP);
+                  return null;
+              }
+              const enemiesForBattle = getEnemiesForEncounter(currentRegionForBattle, currentRun.currentEncounterIndex);
+              if (enemiesForBattle.length === 0 && currentRun.currentEncounterIndex <= currentRegionForBattle.encounters.length) { 
+                  if (currentRun.currentEncounterIndex !== currentRegionForBattle.encounters.length || !currentRegionForBattle.bossId) {
+                    setModalMessage("エラー: このそうぐうでてきが見つかりませんでした。マップにもどります。");
+                    setCurrentRun(null); 
+                    handleSetGamePhase(GamePhase.WORLD_MAP);
+                    return null;
+                  }
+              }
+              const battleBgUrl = currentRegionForBattle?.battleBackgroundUrl;
+              return <BattleScreen 
+                        currentRun={currentRun} 
+                        initialEnemies={enemiesForBattle} 
+                        onBattleEnd={handleBattleEnd} 
+                        updateCurrentRunPlayer={updateCurrentRunPlayerState} 
+                        onFleeBattle={handleFleeBattle} 
+                        isSfxEnabled={isSfxEnabled}
+                        battleBgUrl={battleBgUrl} 
+                      />;
+            case GamePhase.BATTLE_REWARD_SKILL_CARD:
+              return <SkillCardSelectionScreen onCardSelect={handleSkillCardSelect} />;
+            case GamePhase.GAME_OVER:
+              if (!currentRun) {
+                   setModalMessage("エラー: ゲームオーバー状態が無効です。タイトルに戻ります。");
+                   handleSetGamePhase(GamePhase.TITLE);
+                   return null;
+              }
+              return <GameOverScreen xpGained={currentRun.xpGainedThisRun} goldGained={currentRun.goldGainedThisRun} onContinue={handleGameOverContinue} />;
+            case GamePhase.ENDING_MESSAGE:
+              return <EndingMessageScreen onProceed={handleProceedToCredits} />;
+            case GamePhase.CREDITS_ROLL:
+              return <CreditsRollScreen playerName={player?.name || DEFAULT_PLAYER_NAME} onCreditsEnd={handleCreditsEnd} />;
+            case GamePhase.STATUS_SCREEN:
+              if (!player) return <p>プレイヤーデータがありません。</p>;
+              return <StatusScreen player={player} setGamePhase={handleSetGamePhase} onEquipItem={handleEquipItem} onUnequipItem={handleUnequipItem} onEnhanceEquipment={handleEnhanceEquipment}/>;
+            case GamePhase.SHOP:
+              if (!player) return <p>プレイヤーデータがありません。</p>;
+              return <ShopScreen player={player} currentShopRegionId={currentShopRegionId} allRegions={regions} onPurchaseItem={handlePurchaseItem} onSellItem={handleSellItem} setGamePhase={handleSetGamePhase} />;
+            case GamePhase.GACHA:
+              if (!player) return <p>プレイヤーデータがありません。</p>;
+              return <GachaScreen player={player} currentGachaRegionId={currentGachaRegionId} allRegions={regions} onUseGacha={handleUseGacha} setGamePhase={handleSetGamePhase} />;;
+            case GamePhase.WISDOM_BAG: 
+              if (!player) return <p>プレイヤーデータがありません。</p>;
+              return <WisdomBagScreen player={player} setGamePhase={handleSetGamePhase} />;;
+            case GamePhase.MITCHY_QUIZ:
+              if (!player || !currentQuizParams) {
+                  setModalMessage("クイズの準備ができていません。");
+                  handleSetGamePhase(GamePhase.WORLD_MAP);
+                  return null;
+              }
+              return <MitchyQuizScreen 
+                        player={player} 
+                        questions={currentQuizParams.questions} 
+                        onQuizComplete={handleQuizComplete} 
+                        setGamePhase={handleSetGamePhase} 
+                      />;;
+            case GamePhase.PASSWORD_SAVE:
+              return <PasswordManagementScreen mode="save" playerData={player} regionsData={regions} setGamePhase={handleSetGamePhase} onLoadSuccess={handlePasswordLoadSuccess} />;;
+            case GamePhase.PASSWORD_LOAD:
+              return <PasswordManagementScreen mode="load" playerData={player} regionsData={regions} setGamePhase={handleSetGamePhase} onLoadSuccess={handlePasswordLoadSuccess} />;;
+            default:
+              return <p>ふめいなゲームフェーズです！</p>;
+          }
+        })()
+      }
       {modalMessage && (
         <Modal isOpen={!!modalMessage} onClose={() => setModalMessage(null)} title="おしらせ">
           <p className="text-shadow-dq whitespace-pre-wrap">{modalMessage}</p>
@@ -1029,9 +1011,8 @@ const App: React.FC = () => {
           </div>
         </Modal>
       )}
-      {/* Debug password modal removed */}
     </div>
   );
 };
 
-export default App;
+export default MitchieQuestGame; 
