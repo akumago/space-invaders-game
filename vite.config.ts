@@ -6,11 +6,18 @@ export default defineConfig(({ mode }) => {
     return {
       base: '/space-invaders-game/',
       build: {
+        outDir: 'dist',
+        assetsDir: 'assets',
         rollupOptions: {
           input: {
             main: path.resolve(__dirname, 'index.html'),
             'space-invaders': path.resolve(__dirname, 'space-invaders/index.html'),
             'mitchie-quest': path.resolve(__dirname, 'mitchie-quest/index.html')
+          },
+          output: {
+            entryFileNames: 'assets/[name]-[hash].js',
+            chunkFileNames: 'assets/[name]-[hash].js',
+            assetFileNames: 'assets/[name]-[hash].[ext]'
           }
         }
       },

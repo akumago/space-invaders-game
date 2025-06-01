@@ -25,17 +25,29 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # アセットのコピー
-      - name: Copy Assets
+      # アセットの準備
+      - name: Prepare Assets
         run: |
           mkdir -p space-invaders/assets
           mkdir -p mitchie-quest/assets
           cp -r assets/audio space-invaders/assets/
           cp -r assets/audio mitchie-quest/assets/
+          cp -r assets/images space-invaders/assets/
+          cp -r assets/images mitchie-quest/assets/
 
-      # メインビルド
+      # ビルド
       - name: Build
         run: npm run build
+
+      # アセットのコピー
+      - name: Copy Assets to Build
+        run: |
+          cp -r assets/audio dist/assets/
+          cp -r assets/images dist/assets/
+          cp -r assets/audio dist/space-invaders/assets/
+          cp -r assets/images dist/space-invaders/assets/
+          cp -r assets/audio dist/mitchie-quest/assets/
+          cp -r assets/images dist/mitchie-quest/assets/
 
       # ビルド成果物のアップロード
       - name: Upload Pages artifact
