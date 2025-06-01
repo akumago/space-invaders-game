@@ -1,3 +1,5 @@
+
+
 export enum PlayerClass {
   HERO = "ゆうしゃ",
   // WARRIOR = "せんし", // Removed
@@ -21,12 +23,12 @@ export enum TargetType {
 }
 
 export interface StatBoost {
-  maxHp: number;
-  maxMp: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  critRate: number;
+  maxHp?: number;
+  maxMp?: number;
+  attack?: number;
+  defense?: number;
+  speed?: number;
+  critRate?: number; // 0-1, e.g., 0.05 for 5%
 }
 
 export type ElementType = 'fire' | 'ice' | 'dark';

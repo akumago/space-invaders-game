@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GamePhase, Player, PlayerClass, SkillCardOption, StatBoost, Item, Equipment, Region, CurrentRun, Enemy, QuizQuestion, AppliedBuff, DebuffType, BuffType } from './types';
 import { TitleScreen } from './components/TitleScreen';
@@ -18,7 +19,7 @@ import { FinalBossPreDialogueScreen } from './components/FinalBossPreDialogueScr
 import { EndingMessageScreen } from './components/EndingMessageScreen'; 
 import { CreditsRollScreen } from './components/CreditsRollScreen'; 
 import { 
-    createInitialPlayer, saveGame, loadGame, deleteSave, clearSaveData,
+    createInitialPlayer, saveGame, loadGame, deleteSave, 
     checkLevelUp, calculateEffectiveStats, getEnemiesForEncounter, 
     generatePassword, createItemInstance, getDisplayItemName,
     collectWisdomFragment 
@@ -123,49 +124,12 @@ const App: React.FC = () => {
 
 
   useEffect(() => {
-    const initializeAudio = async () => {
-      try {
-        if (await ensureAudioContext()) {
-          setIsSfxEnabled(true);
-          console.log('音声の初期化に成功しました。');
-        } else {
-          console.warn('音声の初期化に失敗しました。ユーザーインタラクションが必要です。');
-        }
-      } catch (error) {
-        console.error('音声の初期化中にエラーが発生しました:', error);
-      }
-    };
-
-    const handleUserInteraction = () => {
-      initializeAudio();
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-    };
-
-    document.addEventListener('click', handleUserInteraction);
-    document.addEventListener('keydown', handleUserInteraction);
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction);
-      document.removeEventListener('keydown', handleUserInteraction);
-    };
-  }, []);
-
-  useEffect(() => {
-    try {
-      const { player: loadedPlayer, regions: loadedRegions } = loadGame();
-      if (loadedPlayer) {
-        setPlayer(loadedPlayer);
-        setRegions(loadedRegions);
-        console.log('セーブデータを読み込みました。');
-      } else {
-        setRegions(loadedRegions);
-        console.log('新しいゲームを開始します。');
-      }
-    } catch (error) {
-      console.error('セーブデータの読み込みに失敗しました:', error);
-      clearSaveData();
-      setRegions(JSON.parse(JSON.stringify(REGIONS)));
+    const { player: loadedPlayer, regions: loadedRegions } = loadGame();
+    if (loadedPlayer) {
+      setPlayer(loadedPlayer);
+      setRegions(loadedRegions); 
+    } else {
+      setRegions(loadedRegions); 
     }
   }, []);
 
@@ -179,12 +143,7 @@ const App: React.FC = () => {
         gamePhase !== GamePhase.CREDITS_ROLL &&   
         currentRun === null 
     ) {
-      try {
-        saveGame(player, regions);
-        console.log('ゲームの状態を保存しました。');
-      } catch (error) {
-        console.error('ゲームの状態の保存に失敗しました:', error);
-      }
+      saveGame(player, regions);
     }
   }, [player, gamePhase, currentRun, regions]);
 
@@ -195,33 +154,20 @@ const App: React.FC = () => {
   }, [player, tryCollectWisdomFragment]);
 
   const startNewGameFlow = () => {
-    try {
-      handleStopTitleMusic();
-      clearSaveData();
-      setPlayer(null); 
-      const initialRegionsFromConstants = JSON.parse(JSON.stringify(REGIONS));
-      setRegions(initialRegionsFromConstants); 
-      setGamePhase(GamePhase.NAME_INPUT);
-      console.log('新しいゲームを開始します。');
-    } catch (error) {
-      console.error('新しいゲームの開始に失敗しました:', error);
-      setModalMessage('新しいゲームの開始に失敗しました。ページを再読み込みしてください。');
-    }
+    handleStopTitleMusic();
+    setPlayer(null); 
+    const initialRegionsFromConstants = JSON.parse(JSON.stringify(REGIONS));
+    setRegions(initialRegionsFromConstants); 
+    setGamePhase(GamePhase.NAME_INPUT);
   };
 
   const continueGameFlow = () => {
-    try {
-      handleStopTitleMusic();
-      if (player) {
-        setGamePhase(GamePhase.WORLD_MAP);
-        console.log('ゲームを続行します。');
-      } else {
-        setModalMessage("セーブデータがみつかりませんでした。はじめからスタートします。");
-        startNewGameFlow();
-      }
-    } catch (error) {
-      console.error('ゲームの続行に失敗しました:', error);
-      setModalMessage('ゲームの続行に失敗しました。ページを再読み込みしてください。');
+    handleStopTitleMusic();
+    if (player) {
+      setGamePhase(GamePhase.WORLD_MAP);
+    } else {
+      setModalMessage("セーブデータがみつかりませんでした。はじめからスタートします。");
+      startNewGameFlow();
     }
   };
 
@@ -368,14 +314,7 @@ const App: React.FC = () => {
     
     const runPlayerSnapshot: Player = JSON.parse(JSON.stringify(player));
     runPlayerSnapshot.temporarySkills = [];
-    runPlayerSnapshot.temporaryStatBoosts = {
-      maxHp: 0,
-      maxMp: 0,
-      attack: 0,
-      defense: 0,
-      speed: 0,
-      critRate: 0,
-    };
+    runPlayerSnapshot.temporaryStatBoosts = {};
     runPlayerSnapshot.activeBuffs = [];
     runPlayerSnapshot.usedOncePerBattleSkills = []; // Reset for the new run/battle series
     const effectiveStats = calculateEffectiveStats(runPlayerSnapshot);
@@ -505,6 +444,7 @@ const App: React.FC = () => {
         }
     }
     
+    let playerAfterBattleUpdate: Player | null = null;
     setPlayer(prevPlayer => {
       if (!prevPlayer) return null; 
       let updatedPersistentPlayer = { ...prevPlayer };
@@ -516,7 +456,6 @@ const App: React.FC = () => {
          const persistentEffectiveStats = calculateEffectiveStats(updatedPersistentPlayer);
          updatedPersistentPlayer.currentHp = Math.min(runPlayerEndState.currentHp, persistentEffectiveStats.maxHp);
          updatedPersistentPlayer.currentMp = Math.min(runPlayerEndState.currentMp, persistentEffectiveStats.maxMp);
-      } else if (!win && runPlayerEndState.currentHp <= 0) {
       }
       
       const { expiredEffectMessages } = updateActiveEffects(updatedPersistentPlayer);
@@ -531,109 +470,102 @@ const App: React.FC = () => {
         let levelUpMsg = `レベル ${updatedPersistentPlayer.level} にあがった！`;
         if (newSkills.length > 0) {
           levelUpMsg += ` あたらしいとくぎ: ${newSkills.map(s => s.name).join('、')} をおぼえた！`;
-        } else {
-             levelUpMsg += `！`;
         }
-        setModalMessage(prev => prev ? `${prev}\n\n${levelUpMsg}` : levelUpMsg);
+        setModalMessage(levelUpMsg);
       }
       
       if (defeatedBossId === ALL_ENEMIES.e_orc_boss.id) {
-        updatedPersistentPlayer = tryCollectWisdomFragmentInternal(updatedPersistentPlayer, 'wf_boss_orc_defeat');
+        tryCollectWisdomFragment('wf_boss_orc_defeat', updatedPersistentPlayer);
       }
       
       updatedPersistentPlayer = checkForWisdomRewards(updatedPersistentPlayer);
-      
+
+      playerAfterBattleUpdate = updatedPersistentPlayer; 
       return updatedPersistentPlayer;
     });
     
     setCurrentRun(prevRun => {
         if(!prevRun) return null;
-        const nextEncounterIndex = win ? prevRun.currentEncounterIndex + 1 : prevRun.currentEncounterIndex; 
         return {
             ...prevRun,
-            currentEncounterIndex: nextEncounterIndex,
             xpGainedThisRun: prevRun.xpGainedThisRun + xpGained,
             goldGainedThisRun: prevRun.goldGainedThisRun + goldGained,
         };
     });
+
+    if (win) {
+      const nextEncounterIndex = currentRun.currentEncounterIndex + 1;
+
+      if (nextEncounterIndex > currentRegion.encounters.length) { 
+        let clearMessage = `${currentRegion.name} をクリアした！`;
+        if (newKeyFragmentMessage) clearMessage += `\n${newKeyFragmentMessage}`;
+
+        setRegions(prevRegions => ({
+            ...prevRegions,
+            [currentRun.currentRegionId]: { ...prevRegions[currentRun.currentRegionId], isCleared: true }
+        }));
+        
+        if (currentRun.currentRegionId === REGIONS.r_micchy_castle.id) { 
+             handleSetGamePhase(GamePhase.ENDING_MESSAGE);
+             return;
+        }
+
+        const regionKeys = Object.keys(REGIONS); 
+        const clearedRegionKeyIndex = regionKeys.indexOf(currentRun.currentRegionId);
+
+        if (playerAfterBattleUpdate && clearedRegionKeyIndex !== -1 && clearedRegionKeyIndex + 1 < regionKeys.length) {
+            const nextRegionIdToUnlock = regionKeys[clearedRegionKeyIndex + 1];
+            const nextRegionDefinition = REGIONS[nextRegionIdToUnlock];
+            if (regions[nextRegionIdToUnlock] && !regions[nextRegionIdToUnlock].isUnlocked) {
+                let canUnlock = true;
+                if (nextRegionDefinition.unlockPlayerLevel && playerAfterBattleUpdate.level < nextRegionDefinition.unlockPlayerLevel) {
+                    canUnlock = false;
+                    clearMessage += `\n${nextRegionDefinition.name}へは まだすすめないようだ... (ひつようレベル: ${nextRegionDefinition.unlockPlayerLevel})`;
+                }
+                
+                if (nextRegionIdToUnlock === REGIONS.r_micchy_castle.id) {
+                     const requiredKeyIds = [ALL_ITEMS.i_key_fragment_forest.id, ALL_ITEMS.i_key_fragment_cave.id, ALL_ITEMS.i_key_fragment_tower.id];
+                     const allKeysPossessed = requiredKeyIds.every(keyId => playerAfterBattleUpdate?.inventory.some(item => item.id === keyId));
+                     if (!allKeysPossessed) canUnlock = false; 
+                }
+
+                if (canUnlock) {
+                    setRegions(prevRegions_1 => ({
+                        ...prevRegions_1,
+                        [nextRegionIdToUnlock]: { ...prevRegions_1[nextRegionIdToUnlock], isUnlocked: true }
+                    }));
+                    clearMessage += `\nあたらしいちいき: ${REGIONS[nextRegionIdToUnlock].name} がかいほうされた！`;
+                }
+            }
+        }
+        setModalMessage(prev => prev ? `${prev}\n\n${clearMessage}` : clearMessage);
+        setCurrentRun(null); 
+        handleSetGamePhase(GamePhase.WORLD_MAP); 
+      } else {
+        // Check boss level before proceeding to skill card if next is boss
+        if (nextEncounterIndex === currentRegion.encounters.length && currentRegion.bossId) {
+            if (playerAfterBattleUpdate && currentRegion.bossUnlockLevel && playerAfterBattleUpdate.level < currentRegion.bossUnlockLevel) {
+                let blockMessage = `${currentRegion.name} のボスに挑戦するにはまだレベルが足りない (必要レベル: ${currentRegion.bossUnlockLevel})。ワールドマップにもどります。`;
+                if (newKeyFragmentMessage) blockMessage = `${newKeyFragmentMessage}\n\n${blockMessage}`;
+                setModalMessage(blockMessage);
+                setCurrentRun(null);
+                handleSetGamePhase(GamePhase.WORLD_MAP);
+                return; 
+            }
+        }
+        
+        const playerStateForSkillCard = {...currentRun.player}; 
+        if (newKeyFragmentMessage) setModalMessage(prev => prev ? `${prev}\n\n${newKeyFragmentMessage}`: newKeyFragmentMessage); 
+        setCurrentRun(prev => prev ? {...prev, currentEncounterIndex: nextEncounterIndex, player: playerStateForSkillCard } : null); 
+        handleSetGamePhase(GamePhase.BATTLE_REWARD_SKILL_CARD); 
+      }
+    } else { 
+      if (player) { 
+            tryCollectWisdomFragment('wf_action_run_fail_first', player);
+      }
+      handleSetGamePhase(GamePhase.GAME_OVER); 
+    }
   };
-
-  useEffect(() => {
-    if (!player || !currentRun) {
-        return;
-    }
-
-    const currentRegion = regions[currentRun.currentRegionId];
-    if (!currentRegion) return;
-
-    if (gamePhase === GamePhase.BATTLE_REWARD_SKILL_CARD) {
-         return;
-    } else if (gamePhase === GamePhase.BATTLE) {
-         const nextEncounterIndex = currentRun.currentEncounterIndex;
-         const regionCleared = nextEncounterIndex > currentRegion.encounters.length;
-
-         if (regionCleared) {
-             let clearMessage = `${currentRegion.name} をクリアした！`;
-
-             setRegions(prevRegions => ({
-                 ...prevRegions,
-                 [currentRun.currentRegionId]: { ...prevRegions[currentRun.currentRegionId], isCleared: true }
-             }));
-
-             if (currentRun.currentRegionId === REGIONS.r_micchy_castle.id) { 
-                  handleSetGamePhase(GamePhase.ENDING_MESSAGE);
-                  setCurrentRun(null);
-                  return;
-             }
-
-             const regionKeys = Object.keys(REGIONS); 
-             const clearedRegionKeyIndex = regionKeys.indexOf(currentRun.currentRegionId);
-
-             if (clearedRegionKeyIndex !== -1 && clearedRegionKeyIndex + 1 < regionKeys.length) {
-                 const nextRegionIdToUnlock = regionKeys[clearedRegionKeyIndex + 1];
-                 const nextRegionDefinition = REGIONS[nextRegionIdToUnlock];
-                 if (regions[nextRegionIdToUnlock] && !regions[nextRegionIdToUnlock].isUnlocked) {
-                     let canUnlock = true;
-                     if (nextRegionDefinition.unlockPlayerLevel && player.level < nextRegionDefinition.unlockPlayerLevel) {
-                         canUnlock = false;
-                         clearMessage += `\n${nextRegionDefinition.name}へは まだすすめないようだ... (ひつようレベル: ${nextRegionDefinition.unlockPlayerLevel})`;
-                     }
-
-                     if (canUnlock && nextRegionIdToUnlock === REGIONS.r_micchy_castle.id) {
-                          const requiredKeyIds = [ALL_ITEMS.i_key_fragment_forest.id, ALL_ITEMS.i_key_fragment_cave.id, ALL_ITEMS.i_key_fragment_tower.id];
-                          const allKeysPossessed = requiredKeyIds.every(keyId => player.inventory.some(item => item.id === keyId));
-                          if (!allKeysPossessed) {
-                              canUnlock = false;
-                          }
-                     }
-
-                     if (canUnlock) {
-                         setRegions(prevRegions_1 => ({
-                             ...prevRegions_1,
-                             [nextRegionIdToUnlock]: { ...prevRegions_1[nextRegionIdToUnlock], isUnlocked: true }
-                         }));
-                         clearMessage += `\nあたらしいちいき: ${REGIONS[nextRegionIdToUnlock].name} がかいほうされた！`;
-                     }
-                 }
-             }
-
-             setCurrentRun(null);
-             handleSetGamePhase(GamePhase.WORLD_MAP);
-
-         } else {
-             if (nextEncounterIndex === currentRegion.encounters.length && currentRegion.bossId) {
-                 if (currentRegion.bossUnlockLevel && player.level < currentRegion.bossUnlockLevel) {
-                     let blockMessage = `${currentRegion.name} のボスに挑戦するにはまだレベルが足りない (必要レベル: ${currentRegion.bossUnlockLevel})。ワールドマップにもどります。`;
-                     setModalMessage(prev => prev ? `${prev}\n\n${blockMessage}` : blockMessage);
-                     setCurrentRun(null);
-                     handleSetGamePhase(GamePhase.WORLD_MAP);
-                     return;
-                 }
-             }
-             handleSetGamePhase(GamePhase.BATTLE_REWARD_SKILL_CARD);
-         }
-    }
-  }, [player, currentRun, regions, handleSetGamePhase, isSfxEnabled]);
 
   const handleSkillCardSelect = (card: SkillCardOption) => {
     if (!currentRun) return;
