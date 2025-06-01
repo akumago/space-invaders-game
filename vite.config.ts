@@ -4,9 +4,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const isMitchieQuest = process.env.GAME_TYPE === 'mitchie-quest';
+    
     return {
       plugins: [react()],
-      base: '/space-invaders-game/',
+      base: isMitchieQuest ? '/space-invaders-game/mitchie-quest/' : '/space-invaders-game/space-invaders/',
       define: {
         'process.env': env
       },
@@ -14,6 +16,9 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        outDir: isMitchieQuest ? 'dist/mitchie-quest' : 'dist/space-invaders'
       }
     };
 });

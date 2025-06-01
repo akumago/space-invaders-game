@@ -1,21 +1,21 @@
 // services/audioService.ts
 
 // GitHub Pages URLs
-const BASE_URL = "https://akumago.github.io/space-invaders-game/music/";
+// const BASE_URL = "https://akumago.github.io/space-invaders-game/music/"; // この行を削除またはコメントアウト
 
 export const SFX_FILES = {
-  DAMAGE: `${BASE_URL}damage_retro_1.mp3`,
-  LEVEL_UP: `${BASE_URL}levelup_fanfare_retro_1.mp3`,
-  GAME_OVER: `${BASE_URL}gameover_retro_2.mp3`,
-  VICTORY: `${BASE_URL}victory_fanfare_retro_3.mp3`,
-  SPELL_CAST: `${BASE_URL}spellcast_retro_1.mp3`,
-  BOSS_APPEAR: `${BASE_URL}spellcast_retro_1.mp3`,
+  DAMAGE: `${import.meta.env.BASE_URL}music/damage_retro_1.mp3`,
+  LEVEL_UP: `${import.meta.env.BASE_URL}music/levelup_fanfare_retro_1.mp3`,
+  GAME_OVER: `${import.meta.env.BASE_URL}music/gameover_retro_2.mp3`,
+  VICTORY: `${import.meta.env.BASE_URL}music/victory_fanfare_retro_3.mp3`,
+  SPELL_CAST: `${import.meta.env.BASE_URL}music/spellcast_retro_1.mp3`,
+  BOSS_APPEAR: `${import.meta.env.BASE_URL}music/spellcast_retro_1.mp3`,
 };
 
 export const BGM_FILES = {
-  TITLE: `${BASE_URL}mitchy_tragedy.mp3`,
-  BATTLE_NORMAL: `${BASE_URL}battle_drumming.mp3`,
-  BATTLE_BOSS: `${BASE_URL}lastboss_darkness.mp3`,
+  TITLE: `${import.meta.env.BASE_URL}music/mitchy_tragedy.mp3`,
+  BATTLE_NORMAL: `${import.meta.env.BASE_URL}music/battle_drumming.mp3`,
+  BATTLE_BOSS: `${import.meta.env.BASE_URL}music/lastboss_darkness.mp3`,
 };
 
 

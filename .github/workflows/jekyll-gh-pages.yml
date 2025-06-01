@@ -1,4 +1,4 @@
-name: Build and Deploy Vite Project to GitHub Pages
+name: Build and Deploy Vite Projects to GitHub Pages
 
 on:
   push:
@@ -22,8 +22,15 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Vite project
+      - name: Build Space Invaders
         run: npm run build
+        env:
+          GAME_TYPE: space-invaders
+
+      - name: Build Mitchie Quest
+        run: npm run build
+        env:
+          GAME_TYPE: mitchie-quest
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
