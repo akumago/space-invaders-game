@@ -6,7 +6,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       plugins: [react()],
-      base: '/space-invaders-game/',
+      base: '/space-invaders-game/mitchie-quest/',
       define: {
         'process.env': env
       },
