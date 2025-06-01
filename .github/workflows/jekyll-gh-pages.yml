@@ -25,34 +25,23 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Space Invadersのビルドに必要なアセットをコピー
-      - name: Copy Space Invaders Assets
-        run: cp -r assets/audio space-invaders/assets/
+      # アセットのコピー
+      - name: Copy Assets
+        run: |
+          mkdir -p space-invaders/assets
+          mkdir -p mitchie-quest/assets
+          cp -r assets/audio space-invaders/assets/
+          cp -r assets/audio mitchie-quest/assets/
 
-      # Space Invadersのビルド (ルートURLにデプロイ)
-      - name: Build Space Invaders (Root)
-        run: vite build --outDir dist --base /space-invaders-game/ space-invaders/index.html
+      # メインビルド
+      - name: Build
+        run: npm run build
 
-      # Space Invadersのビルド成果物にアセットをコピー
-      - name: Copy Space Invaders Assets to Output
-        run: cp -r assets/audio dist/assets/
-
-      # Mitchie Questのビルドに必要なアセットをコピー
-      # - name: Copy Mitchie Quest Assets
-      #   run: cp -r assets/audio mitchie-quest/assets/
-
-      # Mitchie Questのビルド (/mitchie-quest/ にデプロイ)
-      - name: Build Mitchie Quest
-        run: vite build --outDir dist/mitchie-quest --base /space-invaders-game/mitchie-quest/ mitchie-quest/index.html
-
-      # Mitchie Questのビルド成果物にアセットをコピー
-      - name: Copy Mitchie Quest Assets to Output
-        run: cp -r assets/audio dist/mitchie-quest/assets/
-
+      # ビルド成果物のアップロード
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist  # Viteのビルド成果物があるディレクトリを指定
+          path: ./dist
 
   deploy:
     needs: build-and-deploy # ビルドジョブが成功した後に実行
