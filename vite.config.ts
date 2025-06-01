@@ -4,11 +4,23 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
-    const isMitchieQuest = process.env.GAME_TYPE === 'mitchie-quest';
+    const gameType = process.env.GAME_TYPE || 'root';
+    
+    const basePaths = {
+        'root': '/space-invaders-game/',
+        'mitchie-quest': '/space-invaders-game/mitchie-quest/',
+        'space-invaders': '/space-invaders-game/space-invaders/'
+    };
+    
+    const outDirs = {
+        'root': 'dist',
+        'mitchie-quest': 'dist/mitchie-quest',
+        'space-invaders': 'dist/space-invaders'
+    };
     
     return {
       plugins: [react()],
-      base: isMitchieQuest ? '/space-invaders-game/mitchie-quest/' : '/space-invaders-game/space-invaders/',
+      base: basePaths[gameType as keyof typeof basePaths],
       define: {
         'process.env': env
       },
@@ -18,7 +30,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        outDir: isMitchieQuest ? 'dist/mitchie-quest' : 'dist/space-invaders'
+        outDir: outDirs[gameType as keyof typeof outDirs]
       }
     };
 });

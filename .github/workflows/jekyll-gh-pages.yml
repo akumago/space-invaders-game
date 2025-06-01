@@ -22,6 +22,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Build Root (Space Invaders)
+        run: npm run build
+        env:
+          GAME_TYPE: root
+
       - name: Build Space Invaders
         run: npm run build
         env:
