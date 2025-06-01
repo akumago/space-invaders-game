@@ -1,7 +1,10 @@
 // services/audioService.ts
 
 // GitHub raw content URLs
-const SFX_BASE_URL = "https://raw.githubusercontent.com/akumago/space-invaders-game/main/assets/audio/";
+// const SFX_BASE_URL = "https://raw.githubusercontent.com/akumago/space-invaders-game/main/assets/audio/"; // 削除またはコメントアウト
+
+// ViteのBASE_URLを使ってアセットパスを構築
+const SFX_BASE_URL = import.meta.env.BASE_URL + 'assets/audio/';
 
 export const SFX_FILES = {
   DAMAGE: `${SFX_BASE_URL}damage_retro_1.mp3`,
