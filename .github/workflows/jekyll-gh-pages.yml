@@ -6,6 +6,10 @@ on:
       - main  # mainブランチへのプッシュ時にトリガー
   workflow_dispatch: # Actionsタブからの手動実行を許可
 
+permissions:
+  id-token: write
+  pages: write
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
