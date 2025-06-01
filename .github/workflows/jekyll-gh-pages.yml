@@ -29,16 +29,16 @@ jobs:
 
       - name: Build Space Invaders
         run: |
-          mkdir -p dist/space-invaders
-          cp -r space-invaders/index.html dist/space-invaders/
+          # mkdir -p dist/space-invaders  # 不要になったためコメントアウトまたは削除
+          # cp -r space-invaders/index.html dist/space-invaders/ # 不要になったためコメントアウトまたは削除
           npm run build
         env:
           GAME_TYPE: space-invaders
 
       - name: Build Mitchie Quest
         run: |
-          mkdir -p dist/mitchie-quest
-          cp -r mitchie-quest/index.html dist/mitchie-quest/
+          # mkdir -p dist/mitchie-quest # 不要になったためコメントアウトまたは削除
+          # cp -r mitchie-quest/index.html dist/mitchie-quest/ # 不要になったためコメントアウトまたは削除
           npm run build
         env:
           GAME_TYPE: mitchie-quest
