@@ -22,18 +22,24 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Root (Space Invaders)
+      - name: Build Root Page
         run: npm run build
         env:
           GAME_TYPE: root
 
       - name: Build Space Invaders
-        run: npm run build
+        run: |
+          mkdir -p dist/space-invaders
+          cp -r space-invaders/index.html dist/space-invaders/
+          npm run build
         env:
           GAME_TYPE: space-invaders
 
       - name: Build Mitchie Quest
-        run: npm run build
+        run: |
+          mkdir -p dist/mitchie-quest
+          cp -r mitchie-quest/index.html dist/mitchie-quest/
+          npm run build
         env:
           GAME_TYPE: mitchie-quest
 

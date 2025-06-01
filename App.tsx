@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GamePhase, Player, PlayerClass, SkillCardOption, StatBoost, Item, Equipment, Region, CurrentRun, Enemy, QuizQuestion, AppliedBuff, DebuffType, BuffType } from './types';
 import { TitleScreen } from './components/TitleScreen';
@@ -46,7 +45,11 @@ interface CurrentQuizParams {
   wisdomFragmentForRewardId: string;
 }
 
-const App: React.FC = () => {
+interface AppProps {
+  gameType?: 'root' | 'mitchie-quest' | 'space-invaders';
+}
+
+const App: React.FC<AppProps> = ({ gameType = 'root' }) => {
   const [gamePhase, setGamePhase] = useState<GamePhase>(GamePhase.TITLE);
   const [player, setPlayer] = useState<Player | null>(null); 
   const [regions, setRegions] = useState<Record<string, Region>>(() => JSON.parse(JSON.stringify(REGIONS))); 
@@ -913,6 +916,22 @@ const App: React.FC = () => {
 
 
   const renderScreen = () => {
+    if (gameType === 'root') {
+      return (
+        <div className="flex flex-col items-center justify-center h-full bg-black text-white p-4">
+          <h1 className="text-3xl font-bold mb-8">ゲームコレクション</h1>
+          <div className="space-y-4">
+            <a href="/space-invaders" className="block px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg text-center">
+              スペースインベーダー
+            </a>
+            <a href="/mitchie-quest" className="block px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg text-center">
+              ミッチークエスト
+            </a>
+          </div>
+        </div>
+      );
+    }
+
     switch (gamePhase) {
       case GamePhase.TITLE:
         return <TitleScreen 

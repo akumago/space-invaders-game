@@ -3,7 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ミッチークエスト ～失われし初心を取り戻せ！～</title>
+  <title>ゲームコレクション</title>
+  <script>
+    // 環境変数の設定
+    window.GAME_TYPE = 'root';
+  </script>
+  <script type="module" src="./src/root.tsx"></script>
   <script src="https://cdn.tailwindcss.com/3.4.4"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -152,6 +157,5 @@
   <div id="root" class="w-full max-w-md aspect-[9/16] shadow-2xl overflow-auto relative bg-black rounded-lg">
     <!-- React App mounts here -->
   </div>
-  <script type="module" src="./index.tsx"></script>
 </body>
 </html>

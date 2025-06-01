@@ -6,31 +6,48 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     const gameType = process.env.GAME_TYPE || 'root';
     
-    const basePaths = {
-        'root': '/space-invaders-game/',
-        'mitchie-quest': '/space-invaders-game/mitchie-quest/',
-        'space-invaders': '/space-invaders-game/space-invaders/'
+    // ゲームタイプに応じた設定
+    const configs = {
+        'root': {
+            base: '/space-invaders-game/',
+            outDir: 'dist',
+            entry: 'src/root.tsx'
+        },
+        'mitchie-quest': {
+            base: '/space-invaders-game/mitchie-quest/',
+            outDir: 'dist/mitchie-quest',
+            entry: 'src/mitchie-quest.tsx'
+        },
+        'space-invaders': {
+            base: '/space-invaders-game/space-invaders/',
+            outDir: 'dist/space-invaders',
+            entry: 'src/space-invaders.tsx'
+        }
     };
     
-    const outDirs = {
-        'root': 'dist',
-        'mitchie-quest': 'dist/mitchie-quest',
-        'space-invaders': 'dist/space-invaders'
-    };
+    const config = configs[gameType as keyof typeof configs];
     
     return {
-      plugins: [react()],
-      base: basePaths[gameType as keyof typeof basePaths],
-      define: {
-        'process.env': env
-      },
-      resolve: {
-        alias: {
-          '@': path.resolve(__dirname, '.'),
+        plugins: [react()],
+        base: config.base,
+        define: {
+            'process.env': {
+                ...env,
+                GAME_TYPE: JSON.stringify(gameType)
+            }
+        },
+        resolve: {
+            alias: {
+                '@': path.resolve(__dirname, '.'),
+            }
+        },
+        build: {
+            outDir: config.outDir,
+            rollupOptions: {
+                input: {
+                    main: path.resolve(__dirname, config.entry)
+                }
+            }
         }
-      },
-      build: {
-        outDir: outDirs[gameType as keyof typeof outDirs]
-      }
     };
 });
