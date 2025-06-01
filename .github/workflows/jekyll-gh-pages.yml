@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main  # mainブランチへのプッシュ時にトリガー
+  pull_request:
+    branches:
+      - main
   workflow_dispatch: # Actionsタブからの手動実行を許可
 
 jobs:
@@ -22,26 +25,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Root Page
-        run: npm run build
-        env:
-          GAME_TYPE: root
+      # Space Invadersのビルド (ルートURLにデプロイ)
+      - name: Build Space Invaders (Root)
+        run: vite build --outDir dist --base /space-invaders-game/ space-invaders/index.html
 
-      - name: Build Space Invaders
-        run: |
-          # mkdir -p dist/space-invaders  # 不要になったためコメントアウトまたは削除
-          # cp -r space-invaders/index.html dist/space-invaders/ # 不要になったためコメントアウトまたは削除
-          npm run build
-        env:
-          GAME_TYPE: space-invaders
-
+      # Mitchie Questのビルド (/mitchie-quest/ にデプロイ)
       - name: Build Mitchie Quest
-        run: |
-          # mkdir -p dist/mitchie-quest # 不要になったためコメントアウトまたは削除
-          # cp -r mitchie-quest/index.html dist/mitchie-quest/ # 不要になったためコメントアウトまたは削除
-          npm run build
-        env:
-          GAME_TYPE: mitchie-quest
+        run: vite build --outDir dist/mitchie-quest --base /space-invaders-game/mitchie-quest/ mitchie-quest/index.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
