@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ミッチークエスト ～失われし初心を取り戻せ！～</title>
+  <script src="https://cdn.tailwindcss.com/3.4.4"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'DotGothic16', 'MS Gothic', 'Courier New', monospace;
+      overscroll-behavior: none; /* Prevent pull-to-refresh on mobile */
+      background-color: #0C0C0C; 
+    }
+
+    .dq-window {
+      background-color: #001f50; /* DQウィンドウの濃い青 */
+      border: 4px solid #fff; /* 太い白枠 */
+      box-shadow: 0 0 0 2px #5894d8; /* 白枠の外側に水色の細い線 */
+      padding: 1rem; /* 16px */
+      color: white;
+    }
+
+    .text-shadow-dq {
+      text-shadow: 1px 1px 0px #000000; /* くっきりした黒い影 */
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 16px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #001f50; /* スクロールバーのトラック背景 */
+    }
+    ::-webkit-scrollbar-thumb {
+      background-color: #FFFFFF; /* つまみの色 (白) */
+      border: 3px solid #001f50; /* トラック背景色で縁取り */
+      border-radius: 0px; /* 角丸なし */
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: #E0E0E0; /* ホバー時のつまみの色 */
+    }
+
+    /* Button styles */
+    .dq-button {
+      background-color: #003366; /* ボタン背景色 */
+      color: white;
+      border: 2px solid white;
+      padding-top: 0.5rem; /* 8px */
+      padding-bottom: 0.5rem; /* 8px */
+      padding-left: 1rem; /* 16px */
+      padding-right: 1rem; /* 16px */
+      text-align: center;
+      transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+      cursor: pointer;
+      line-height: 1.5; /* Ensure text is vertically centered */
+      display: inline-block; /* Allow padding to work correctly */
+    }
+    .dq-button:hover {
+      background-color: #005CB9; /* ホバー時の背景色 */
+      border-color: #FFFF00; /* ホバー時の枠線色 (黄色) */
+    }
+    .dq-button:disabled {
+      background-color: #3a4a6a; /* 少し明るめの青系グレー for disabled */
+      border-color: #6b7f9e; 
+      color: #9ab0d9;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
+    .dq-button.danger { /* For cancel/back buttons etc. */
+        background-color: #630000;
+        border-color: #ff9999;
+    }
+    .dq-button.danger:hover {
+        background-color: #8b0000;
+        border-color: #ffdddd;
+    }
+     .dq-button.confirm { /* For confirm/proceed buttons */
+        background-color: #006320;
+        border-color: #99ffb0;
+    }
+    .dq-button.confirm:hover {
+        background-color: #008b2d;
+        border-color: #ddffea;
+    }
+
+    /* Helper for full width buttons */
+    .w-full-dq-button {
+      width: 100%;
+      box-sizing: border-box; /* Ensure padding and border don't make it overflow */
+    }
+
+    /* Animation for enemy appearing */
+    @keyframes enemyAppear {
+      from { opacity: 0; transform: scale(0.95) translateY(10px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    .animate-enemyAppear {
+      animation: enemyAppear 0.3s ease-out forwards;
+    }
+
+    /* Screen Flash Effect */
+    @keyframes screenFlashEffect {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 0.8; } /* More intense flash */
+    }
+    .screen-flash-active {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: white;
+      opacity: 0;
+      z-index: 9999; /* Ensure it's on top */
+      animation: screenFlashEffect 0.35s ease-in-out;
+      pointer-events: none; /* Allow clicks through */
+    }
+    
+    /* Slashed button style for "にげられない！" */
+    .dq-button-slashed {
+      position: relative; /* Needed for absolute positioning of pseudo-element */
+      overflow: hidden; /* Ensures the slash doesn't go outside button bounds */
+    }
+    .dq-button-slashed::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: -10%; /* Start slightly off-canvas for better diagonal coverage */
+      width: 120%; /* Extend slightly for full diagonal coverage */
+      height: 3px; /* A bit thicker line */
+      background-color: rgba(200, 30, 30, 0.8); /* Semi-transparent strong red */
+      transform: rotate(-20deg) translateY(-50%); /* Adjust angle for aesthetics */
+      transform-origin: center center; /* Rotate around the center of the slash */
+      pointer-events: none; /* So it doesn't interfere with clicks */
+      z-index: 1; /* Ensure it's above the button text if needed, though usually not */
+    }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="flex items-center justify-center min-h-screen bg-black">
+  <div id="root" class="w-full max-w-md aspect-[9/16] shadow-2xl overflow-auto relative bg-black rounded-lg">
+    <!-- React App mounts here -->
+  </div>
+  <script type="module" src="./index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
